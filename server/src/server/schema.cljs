@@ -3,11 +3,13 @@
 
 (def configs {:storage-key "/data/topixim/table-two.edn", :port 11003})
 
-(def database {:sessions {}, :users {}, :count 0})
+(def database {:sessions {}, :users {}, :markdown {}})
 
 (def dev? (do ^boolean js/goog.DEBUG))
 
 (def notification {:id nil, :kind nil, :text nil})
+
+(def paragraph {:id nil, :title "", :content "", :time nil})
 
 (def router {:name nil, :title nil, :data {}, :router nil})
 
