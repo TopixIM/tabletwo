@@ -3,7 +3,7 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros :refer [defcomp <> div span action-> button]]
+            [respo.macros :refer [defcomp <> div span action-> cursor-> button]]
             [respo.comp.inspect :refer [comp-inspect]]
             [respo.comp.space :refer [=<]]
             [app.comp.navigation :refer [comp-navigation]]
@@ -38,7 +38,11 @@
         (let [router (:router store)]
           (case (:name router)
             :profile (comp-profile (:user store))
-            :home (div {:style (merge ui/row ui/flex)} (comp-editor) (comp-previewer))
+            :home
+              (div
+               {:style (merge ui/row ui/flex)}
+               (cursor-> :editor comp-editor states (:markdown store))
+               (comp-previewer))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
       (comp-navigation (:logged-in? store))

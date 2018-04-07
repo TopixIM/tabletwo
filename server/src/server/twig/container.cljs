@@ -7,12 +7,11 @@
  (db session records)
  (let [logged-in? (some? (:user-id session))
        router (:router session)
-       base-data {:logged-in? logged-in?,
-                  :session session,
-                  :count (:count db),
-                  :reel-length (count records)}]
+       base-data {:logged-in? logged-in?, :session session, :reel-length (count records)}]
    (merge
     base-data
     (if logged-in?
-      {:user (twig-user (get-in db [:users (:user-id session)])), :router router}
+      {:user (twig-user (get-in db [:users (:user-id session)])),
+       :markdown (:markdown db),
+       :router router}
       nil))))
