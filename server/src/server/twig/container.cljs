@@ -13,5 +13,6 @@
     (if logged-in?
       {:user (twig-user (get-in db [:users (:user-id session)])),
        :markdown (:markdown db),
-       :router router}
+       :router router,
+       :count (count (:sessions db))}
       nil))))

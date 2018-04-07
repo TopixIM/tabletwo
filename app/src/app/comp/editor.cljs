@@ -32,7 +32,7 @@
   (div
    {}
    (list->
-    {:style ui/column}
+    {:style (merge ui/flex ui/column)}
     (->> markdown
          (map (fn [[k paragraph]] [k (cursor-> k comp-paragraph-editor states paragraph)]))))
    (button

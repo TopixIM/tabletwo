@@ -3,11 +3,12 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros :refer [defcomp <> action-> span div]]))
+            [respo.macros :refer [defcomp <> action-> span div]]
+            [respo.comp.space :refer [=<]]))
 
 (defcomp
  comp-navigation
- (logged-in?)
+ (logged-in? members-count)
  (div
   {:style (merge
            ui/column-parted
@@ -21,4 +22,6 @@
    (<> span "Cumulo" nil))
   (div
    {:style {:cursor "pointer"}, :on-click (action-> :router/change {:name :profile})}
-   (<> (if logged-in? "Me" "Guest")))))
+   (<> (if logged-in? "Me" "Guest"))
+   (=< 8 nil)
+   (<> members-count))))

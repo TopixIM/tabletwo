@@ -42,10 +42,10 @@
               (div
                {:style (merge ui/row ui/flex)}
                (cursor-> :editor comp-editor states (:markdown store))
-               (comp-previewer))
+               (comp-previewer (:markdown store)))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
-      (comp-navigation (:logged-in? store))
+      (comp-navigation (:logged-in? store) (:count store))
       (when dev? (comp-inspect "Store" store {:bottom 0, :left 0, :max-width "100%"}))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
       (when dev? (comp-reel (:reel-length store) {}))))))
