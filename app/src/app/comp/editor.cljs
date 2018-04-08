@@ -13,10 +13,18 @@
  (states sort-id paragraph)
  (let [state (or (:data states) {:text "", :time 0})]
    (div
-    {:style (merge ui/column)}
+    {:style (merge ui/column),
+     :on-drop (fn [e d! m!]
+       (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
+         (.stopPropagation (:event e))
+         (if (not= sort-id data) (d! :paragraph/move {:target data, :base sort-id})))),
+     :on-dragover (fn [e d! m!] (.preventDefault (:event e))),
+     :on-dragenter (fn [e d! m!] (.preventDefault (:event e)))}
     (div
-     {:style (merge ui/row-parted {:padding "4px 8px"})}
-     (<> "paragraph")
+     {:style (merge ui/row-parted {:padding "4px 8px", :cursor :move}),
+      :draggable true,
+      :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
+     (<> sort-id {:color (hsl 0 0 70)})
      (div
       {:style {:cursor :pointer}, :on-click (action-> :paragraph/remove sort-id)}
       (comp-icon :android-close)))
@@ -33,15 +41,12 @@
  comp-editor
  (states markdown)
  (div
-  {:style ui/flex}
-  (<> "this is editor")
-  (div
-   {}
-   (list->
-    {:style (merge ui/flex ui/column)}
-    (->> markdown
-         (map
-          (fn [[k paragraph]] [k (cursor-> k comp-paragraph-editor states k paragraph)]))))
-   (button
-    {:style (merge ui/button {}), :on-click (action-> :paragraph/append nil)}
-    (<> "Append")))))
+  {:style (merge ui/flex {:overflow :auto, :padding-bottom 200})}
+  (list->
+   {:style (merge ui/flex ui/column)}
+   (->> markdown
+        (sort-by first)
+        (map (fn [[k paragraph]] [k (cursor-> k comp-paragraph-editor states k paragraph)]))))
+  (button
+   {:style (merge ui/button {}), :on-click (action-> :paragraph/append nil)}
+   (<> "Append"))))

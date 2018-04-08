@@ -12,4 +12,5 @@
  (list->
   {:style (merge ui/flex {:flex-shrink 0})}
   (->> markdown
+       (sort-by first)
        (map (fn [[k paragraph]] [k (div {} (comp-md-block (:content paragraph) {}))])))))

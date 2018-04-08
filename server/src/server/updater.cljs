@@ -17,5 +17,6 @@
             :paragraph/append paragraph/append-one
             :paragraph/content paragraph/update-content
             :paragraph/remove paragraph/remove-one
+            :paragraph/move paragraph/move
             (do (println "Unknown op:" op) identity))]
     (f db op-data sid op-id op-time)))
