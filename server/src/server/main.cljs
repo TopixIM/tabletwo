@@ -27,7 +27,7 @@
 
 (defn dispatch! [op op-data sid]
   (let [op-id (.generate shortid), op-time (.valueOf (js/Date.))]
-    (println "Dispatch!" (str op) op-data sid)
+    (println "Dispatch!" op sid)
     (try-verbosely!
      (cond
        (= op :effect/persist) (persist-db!)
