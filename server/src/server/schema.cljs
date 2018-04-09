@@ -9,7 +9,7 @@
 
 (def notification {:id nil, :kind nil, :text nil})
 
-(def paragraph {:id nil, :title "", :content "", :time nil})
+(def paragraph {:id nil, :editing? false, :title "", :content "", :time nil})
 
 (def router {:name nil, :title nil, :data {}, :router nil})
 
@@ -18,6 +18,7 @@
    :id nil,
    :nickname nil,
    :router {:name :home, :data nil, :router nil},
-   :notifications []})
+   :notifications [],
+   :focused-id nil})
 
 (def user {:name nil, :id nil, :nickname nil, :avatar nil, :password nil})

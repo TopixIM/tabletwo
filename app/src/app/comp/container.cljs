@@ -12,7 +12,6 @@
             [respo-message.comp.msg-list :refer [comp-msg-list]]
             [app.comp.reel :refer [comp-reel]]
             [app.schema :refer [dev?]]
-            [app.comp.previewer :refer [comp-previewer]]
             [app.comp.editor :refer [comp-editor]]))
 
 (defcomp
@@ -41,8 +40,7 @@
             :home
               (div
                {:style (merge ui/row ui/flex)}
-               (cursor-> :editor comp-editor states (:markdown store))
-               (comp-previewer (:markdown store)))
+               (cursor-> :editor comp-editor states (:markdown store)))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
       (comp-navigation (:logged-in? store) (:count store))

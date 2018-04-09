@@ -18,5 +18,7 @@
             :paragraph/content paragraph/update-content
             :paragraph/remove paragraph/remove-one
             :paragraph/move paragraph/move
+            :paragraph/edit paragraph/edit
+            :paragraph/finish-editing paragraph/finish-editing
             (do (println "Unknown op:" op) identity))]
     (f db op-data sid op-id op-time)))

@@ -8,7 +8,16 @@
    :markdown
    (fn [markdown]
      (let [new-key (bisection-util/key-append markdown)]
-       (assoc markdown new-key (merge schema/paragraph {:id op-id, :time op-time}))))))
+       (assoc
+        markdown
+        new-key
+        (merge schema/paragraph {:id op-id, :time op-time, :editing? true}))))))
+
+(defn edit [db op-data session-id op-id op-time]
+  (assoc-in db [:markdown op-data :editing?] true))
+
+(defn finish-editing [db op-data session-id op-id op-time]
+  (assoc-in db [:markdown op-data :editing?] false))
 
 (defn move [db op-data session-id op-id op-time]
   (let [target-key (:target op-data), base-key (:base op-data)]

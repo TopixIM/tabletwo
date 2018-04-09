@@ -6,14 +6,29 @@
             [respo.macros
              :refer
              [defcomp <> action-> cursor-> list-> span div button textarea]]
-            [respo-ui.comp.icon :refer [comp-icon]]))
+            [respo-ui.comp.icon :refer [comp-icon]]
+            [respo-md.comp.md :refer [comp-md-block]]
+            [respo.comp.space :refer [=<]]))
+
+(defcomp
+ comp-editor-toolbar
+ (sort-id)
+ (div
+  {:style {:font-size 16}}
+  (span
+   {:style {:cursor :pointer}, :on-click (action-> :paragraph/remove sort-id)}
+   (comp-icon :ios-trash))
+  (=< 16 nil)
+  (span
+   {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
+   (comp-icon :ios-eye))))
 
 (defcomp
  comp-paragraph-editor
  (states sort-id paragraph)
  (let [state (or (:data states) {:text "", :time 0})]
    (div
-    {:style (merge ui/column),
+    {:style (merge ui/column {:padding 16}),
      :on-drop (fn [e d! m!]
        (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
          (.stopPropagation (:event e))
@@ -25,17 +40,21 @@
       :draggable true,
       :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
      (<> sort-id {:color (hsl 0 0 70)})
-     (div
-      {:style {:cursor :pointer}, :on-click (action-> :paragraph/remove sort-id)}
-      (comp-icon :android-close)))
-    (textarea
-     {:style (merge ui/textarea {:width "100%", :min-height 120, :resize :vertical}),
-      :placeholder "Paragraph",
-      :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
-      :on-input (fn [e d! m!]
-        (let [timestamp (.now js/Date)]
-          (m! {:time timestamp, :text (:value e)})
-          (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)})))}))))
+     (if (:editing? paragraph)
+       (comp-editor-toolbar sort-id)
+       (div
+        {:style {:cursor :pointer}, :on-click (fn [e d! m!] (d! :paragraph/edit sort-id))}
+        (comp-icon :compose))))
+    (if (:editing? paragraph)
+      (textarea
+       {:style (merge ui/textarea {:width "100%", :min-height 120, :resize :vertical}),
+        :placeholder "Paragraph",
+        :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
+        :on-input (fn [e d! m!]
+          (let [timestamp (.now js/Date)]
+            (m! {:time timestamp, :text (:value e)})
+            (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)})))})
+      (comp-md-block (:content paragraph) {})))))
 
 (defcomp
  comp-editor
