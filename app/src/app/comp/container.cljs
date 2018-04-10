@@ -41,7 +41,7 @@
             :home
               (div
                {:style (merge ui/row ui/flex)}
-               (cursor-> :editor comp-editor states (:markdown store)))
+               (cursor-> :editor comp-editor states (:markdown store) (:focuses store)))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
       (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
