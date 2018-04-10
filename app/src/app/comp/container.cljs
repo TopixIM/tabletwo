@@ -33,6 +33,7 @@
      (comp-offline)
      (div
       {:style (merge ui/global ui/fullscreen ui/row)}
+      (comp-navigation (:logged-in? store) (:count store))
       (if (:logged-in? store)
         (let [router (:router store)]
           (case (:name router)
@@ -43,9 +44,8 @@
                (cursor-> :editor comp-editor states (:markdown store)))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
-      (comp-navigation (:logged-in? store) (:count store))
-      (when dev? (comp-inspect "Store" store {:bottom 0, :left 0, :max-width "100%"}))
+      (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
-      (when dev? (comp-reel (:reel-length store) {}))))))
+      (when dev? (comp-reel (:reel-length store) {:right 0, :bottom 40}))))))
 
 (def style-body {:padding "8px 16px"})

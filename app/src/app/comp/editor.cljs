@@ -8,7 +8,8 @@
              [defcomp <> action-> cursor-> list-> span div button textarea]]
             [respo-ui.comp.icon :refer [comp-icon]]
             [respo-md.comp.md :refer [comp-md-block]]
-            [respo.comp.space :refer [=<]]))
+            [respo.comp.space :refer [=<]]
+            [app.style :as style]))
 
 (defcomp
  comp-editor-toolbar
@@ -28,7 +29,9 @@
  (states sort-id paragraph)
  (let [state (or (:data states) {:text "", :time 0})]
    (div
-    {:style (merge ui/column {:padding 16}),
+    {:style (merge
+             ui/column
+             {:background-color (hsl 0 0 96), :border (str "1px solid " (hsl 0 0 90))}),
      :on-drop (fn [e d! m!]
        (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
          (.stopPropagation (:event e))
@@ -36,10 +39,14 @@
      :on-dragover (fn [e d! m!] (.preventDefault (:event e))),
      :on-dragenter (fn [e d! m!] (.preventDefault (:event e)))}
     (div
-     {:style (merge ui/row-parted {:padding "4px 8px", :cursor :move}),
+     {:style (merge
+              ui/row
+              {:padding "4px 8px",
+               :cursor :move,
+               :justify-content :flex-end,
+               :align-items :center}),
       :draggable true,
       :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
-     (<> sort-id {:color (hsl 0 0 70)})
      (if (:editing? paragraph)
        (comp-editor-toolbar sort-id)
        (div
@@ -47,25 +54,33 @@
         (comp-icon :compose))))
     (if (:editing? paragraph)
       (textarea
-       {:style (merge ui/textarea {:width "100%", :min-height 120, :resize :vertical}),
+       {:style (merge
+                ui/textarea
+                {:width "100%", :min-height 120, :resize :vertical, :padding 16}),
         :placeholder "Paragraph",
         :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
         :on-input (fn [e d! m!]
           (let [timestamp (.now js/Date)]
             (m! {:time timestamp, :text (:value e)})
-            (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)})))})
-      (comp-md-block (:content paragraph) {})))))
+            (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)})))}))
+    (comp-md-block (:content paragraph) {:style {:padding 16}}))))
 
 (defcomp
  comp-editor
  (states markdown)
  (div
   {:style (merge ui/flex {:overflow :auto, :padding-bottom 200})}
-  (list->
-   {:style (merge ui/flex ui/column)}
-   (->> markdown
-        (sort-by first)
-        (map (fn [[k paragraph]] [k (cursor-> k comp-paragraph-editor states k paragraph)]))))
-  (button
-   {:style (merge ui/button {}), :on-click (action-> :paragraph/append nil)}
-   (<> "Append"))))
+  (div
+   {:style {:max-width 960, :margin "0px auto", :padding 32}}
+   (list->
+    {:style (merge ui/flex ui/column)}
+    (->> markdown
+         (sort-by first)
+         (map
+          (fn [[k paragraph]] [k (cursor-> k comp-paragraph-editor states k paragraph)]))))
+   (=< nil 16)
+   (div
+    {:style (merge ui/row {:justify-content :flex-end})}
+    (button
+     {:style (merge style/button {}), :on-click (action-> :paragraph/append nil)}
+     (<> "Append"))))))

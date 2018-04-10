@@ -15,11 +15,11 @@
            {:justify-content :space-between,
             :padding "0 16px",
             :font-size 16,
-            :border-left (str "1px solid " (hsl 0 0 0 0.1)),
-            :font-family ui/font-fancy})}
+            :font-family ui/font-fancy,
+            :background-color (hsl 0 0 96)})}
   (div
    {:on-click (action-> :router/change {:name :home}), :style {:cursor :pointer}}
-   (<> span "Cumulo" nil))
+   (<> span "Table2" nil))
   (div
    {:style {:cursor "pointer"}, :on-click (action-> :router/change {:name :profile})}
    (<> (if logged-in? "Me" "Guest"))
