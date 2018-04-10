@@ -2,9 +2,9 @@
 (ns build.upload
   (:require [clojure.java.shell :refer [sh]]))
 
-(def configs {:orgization "Cumulo"
-              :name "workflow"
-              :cdn "cumulo-workflow"})
+(def configs {:orgization "TopixIM"
+              :name "tabletwo"
+              :cdn "tabletwo"})
 
 (defn sh! [command]
   (println command)

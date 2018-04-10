@@ -3,8 +3,8 @@
   (:require [clojure.java.shell :refer [sh]]))
 
 (def configs {:orgization "TopixIM"
-              :name "table-two"
-              :cdn "table-two"})
+              :name "tabletwo"
+              :cdn "tabletwo"})
 
 (defn sh! [command]
   (println command)
