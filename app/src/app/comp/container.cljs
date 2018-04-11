@@ -12,7 +12,8 @@
             [respo-message.comp.msg-list :refer [comp-msg-list]]
             [app.comp.reel :refer [comp-reel]]
             [app.schema :refer [dev?]]
-            [app.comp.editor :refer [comp-editor]]))
+            [app.comp.editor :refer [comp-editor]]
+            [app.comp.raw-text :refer [comp-raw-text]]))
 
 (defcomp
  comp-offline
@@ -42,6 +43,7 @@
               (div
                {:style (merge ui/row ui/flex)}
                (cursor-> :editor comp-editor states (:markdown store) (:focuses store)))
+            :code (comp-raw-text (:markdown store))
             (div {:style ui/flex} (<> (pr-str router)))))
         (comp-login states))
       (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
