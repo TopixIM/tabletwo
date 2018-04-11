@@ -31,7 +31,7 @@
    (div
     {:style (merge
              ui/column
-             {:background-color (hsl 0 0 96), :border (str "1px solid " (hsl 0 0 90))}),
+             {:background-color :white, :border (str "1px solid " (hsl 0 0 96))}),
      :on-drop (fn [e d! m!]
        (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
          (.stopPropagation (:event e))
@@ -71,7 +71,9 @@
             (m! {:time timestamp, :text (:value e)})
             (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
         :on-focus (action-> :session/focus-to sort-id)}))
-    (comp-md-block (:content paragraph) {:style {:padding 16}}))))
+    (comp-md-block
+     (:content paragraph)
+     {:class-name "preview-content", :style {:padding 16}}))))
 
 (defcomp
  comp-editor

@@ -8,3 +8,14 @@ body * {
   box-sizing: border-box;
   flex-shrink: 0;
 }
+
+.md-block.preview-content pre {
+    background-color: #f7f7f7;
+    margin: 8px -16px;
+    padding: 16px;
+    font-size: 12px;
+    font-family: Source Code Pro, Menlo, monospace;
+    line-height: 1.6em;
+}
+
+.md-block.preview-content pre code {}
