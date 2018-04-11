@@ -9,7 +9,9 @@
             [respo-ui.comp.icon :refer [comp-icon]]
             [respo-md.comp.md :refer [comp-md-block]]
             [respo.comp.space :refer [=<]]
-            [app.style :as style]))
+            [app.style :as style]
+            ["highlight.js" :as hljs]
+            ["escape-html" :as escape-html]))
 
 (defcomp
  comp-editor-toolbar
@@ -23,6 +25,9 @@
   (span
    {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
    (comp-icon :ios-eye))))
+
+(def supprted-langs
+  {"clojure" "clojure", "javascript" "javascript", "js" "javascript", "bash" "bash"})
 
 (defcomp
  comp-paragraph-editor
@@ -63,7 +68,12 @@
       (textarea
        {:style (merge
                 ui/textarea
-                {:width "100%", :min-height 120, :resize :vertical, :padding 16}),
+                {:width "100%",
+                 :min-height 120,
+                 :resize :vertical,
+                 :padding 16,
+                 :background-color (hsl 0 0 100),
+                 :border (str "1px solid " (hsl 240 80 80))}),
         :placeholder "Paragraph",
         :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
         :on-input (fn [e d! m!]
@@ -73,7 +83,12 @@
         :on-focus (action-> :session/focus-to sort-id)}))
     (comp-md-block
      (:content paragraph)
-     {:class-name "preview-content", :style {:padding 16}}))))
+     {:class-name "preview-content",
+      :style {:padding 16},
+      :highlight (fn [code lang]
+        (if (contains? supprted-langs lang)
+          (.-value (.highlight hljs (get supprted-langs lang) code))
+          (escape-html code)))}))))
 
 (defcomp
  comp-editor

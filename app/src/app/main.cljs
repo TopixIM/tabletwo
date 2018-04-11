@@ -5,7 +5,11 @@
             [app.comp.container :refer [comp-container]]
             [cljs.reader :refer [read-string]]
             [app.network :refer [send! setup-socket!]]
-            [app.schema :as schema]))
+            [app.schema :as schema]
+            ["highlight.js" :as hljs]
+            ["highlight.js/lib/languages/clojure" :as clojure-lang]
+            ["highlight.js/lib/languages/bash" :as bash-lang]
+            ["highlight.js/lib/languages/javascript" :as javascript-lang]))
 
 (declare dispatch!)
 
@@ -45,6 +49,9 @@
 (def ssr? (some? (.querySelector js/document "meta.respo-ssr")))
 
 (defn main! []
+  (.registerLanguage hljs "clojure" clojure-lang)
+  (.registerLanguage hljs "bash" bash-lang)
+  (.registerLanguage hljs "javascript" javascript-lang)
   (if ssr? (render-app! realize-ssr!))
   (render-app! render!)
   (connect!)

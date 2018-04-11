@@ -14,14 +14,14 @@
     base-info
     {:styles ["http://localhost:8100/main.css" "/entry/main.css"],
      :scripts ["/main.js"],
-     :inline-styles []})))
+     :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")]})))
 
 (def preview? (= "preview" js/process.env.prod))
 
 (defn prod-page []
   (let [html-content (make-string (comp-container {} nil))
         assets (read-string (slurp "dist/assets.edn"))
-        cdn (if preview? "" "http://cdn.tiye.me/table-two/")
+        cdn (if preview? "" "http://cdn.tiye.me/tabletwo/")
         prefix-cdn #(str cdn %)]
     (make-page
      html-content
@@ -29,7 +29,8 @@
       base-info
       {:styles ["http://cdn.tiye.me/favored-fonts/main.css"],
        :scripts (map #(-> % :output-name prefix-cdn) assets),
-       :inline-styles [(slurp "entry/main.css")]}))))
+       :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")
+                       (slurp "entry/main.css")]}))))
 
 (defn main! []
   (if (= js/process.env.env "dev")

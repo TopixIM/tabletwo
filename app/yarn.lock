@@ -746,6 +746,10 @@ elliptic@^6.0.0:
     minimalistic-assert "^1.0.0"
     minimalistic-crypto-utils "^1.0.0"
 
+escape-html@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/escape-html/-/escape-html-1.0.3.tgz#0258eae4d3d0c0974de1c169188ef0051d1d1988"
+
 escape-string-regexp@^1.0.2:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-1.0.5.tgz#1b61c0562190a8dff6ae3bb2cf0200ca130b86d4"
@@ -802,6 +806,10 @@ hash.js@^1.0.0, hash.js@^1.0.3:
 he@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/he/-/he-1.1.1.tgz#93410fd21b009735151f8868c2f271f3427e23fd"
+
+highlight.js@^9.12.0:
+  version "9.12.0"
+  resolved "https://registry.yarnpkg.com/highlight.js/-/highlight.js-9.12.0.tgz#e6d9dbe57cbefe60751f02af336195870c90c01e"
 
 hmac-drbg@^1.0.0:
   version "1.0.1"
@@ -1194,9 +1202,9 @@ shadow-cljs-jar@1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.1.2.tgz#88664fae5957a7c21554e1a33476f1c475162c92"
 
-shadow-cljs@^2.2.20:
-  version "2.2.20"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.2.20.tgz#9ffd3ecd9a57dcd9bc43f6e9ed41d0d55cb51abf"
+shadow-cljs@^2.2.24:
+  version "2.2.29"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-2.2.29.tgz#daea4bb26ed205a238bcabecd38cef2fc098a3a2"
   dependencies:
     babel-core "^6.26.0"
     babel-preset-env "^1.6.0"
