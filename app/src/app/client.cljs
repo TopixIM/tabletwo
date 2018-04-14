@@ -1,10 +1,10 @@
 
-(ns app.main
+(ns app.client
   (:require [respo.core :refer [render! clear-cache! realize-ssr!]]
             [respo.cursor :refer [mutate]]
             [app.comp.container :refer [comp-container]]
             [cljs.reader :refer [read-string]]
-            [app.network :refer [send! setup-socket!]]
+            [app.connection :refer [send! setup-socket!]]
             [app.schema :as schema]
             ["highlight.js" :as hljs]
             ["highlight.js/lib/languages/clojure" :as clojure-lang]
@@ -22,7 +22,7 @@
 (defonce *store (atom nil))
 
 (defn simulate-login! []
-  (let [raw (.getItem js/localStorage (:storage-key schema/configs))]
+  (let [raw (.getItem js/localStorage (:local-storage-key schema/configs))]
     (if (some? raw)
       (do (println "Found storage.") (dispatch! :user/log-in (read-string raw)))
       (do (println "Found no storage.")))))

@@ -1,5 +1,5 @@
 
-(ns app.render
+(ns app.page
   (:require [respo.render.html :refer [make-string]]
             [shell-page.core :refer [make-page spit slurp]]
             [app.comp.container :refer [comp-container]]
@@ -13,7 +13,7 @@
    (merge
     base-info
     {:styles ["http://localhost:8100/main.css" "/entry/main.css"],
-     :scripts ["/main.js"],
+     :scripts ["/client.js"],
      :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")]})))
 
 (def preview? (= "preview" js/process.env.prod))

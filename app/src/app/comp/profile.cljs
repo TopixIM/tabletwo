@@ -22,5 +22,5 @@
             :padding "0 8px"},
     :on-click (fn [e dispatch! mutate!]
       (dispatch! :user/log-out nil)
-      (.removeItem js/localStorage (:storage-key schema/configs)))}
+      (.removeItem js/localStorage (:local-storage-key schema/configs)))}
    (<> span "Log out" nil))))
