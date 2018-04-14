@@ -1,26 +1,30 @@
 {
-  "name": "cumulo-workflow",
+  "name": "tabletwo",
   "version": "0.1.0",
-  "description": "Cumulo Workflow",
+  "description": "A markdown table ot two",
   "main": "index.js",
   "scripts": {
-    "watch": "shadow-cljs watch browser",
+    "watch": "shadow-cljs watch client server",
     "build": "shadow-cljs clj-run build.main/build",
     "serve": "http-server dist -s",
     "repl": "rlwrap shadow-cljs clj-repl"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:mvc-works/cumulo-workflow.git"
+    "url": "git@github.com:TopixIM/tabletwo.git"
   },
   "author": "jiyinyiyong",
   "license": "MIT",
   "devDependencies": {
     "http-server": "^0.11.1",
-    "shadow-cljs": "^2.2.24"
+    "shadow-cljs": "^2.2.30",
+    "source-map-support": "^0.5.3",
+    "ws": "^5.0.0"
   },
   "dependencies": {
     "escape-html": "^1.0.3",
-    "highlight.js": "^9.12.0"
+    "highlight.js": "^9.12.0",
+    "md5": "^2.2.1",
+    "shortid": "^2.2.6"
   }
 }
