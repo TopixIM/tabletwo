@@ -15,7 +15,11 @@ body * {
     padding: 16px;
     font-size: 12px;
     font-family: Source Code Pro, Menlo, monospace;
-    line-height: 1.6em;
+    line-height: 1.4em;
 }
 
 .md-block.preview-content pre code {}
+
+.md-block .md-p {
+  margin: 16px 0;
+}

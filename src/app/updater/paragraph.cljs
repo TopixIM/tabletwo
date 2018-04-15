@@ -13,11 +13,17 @@
         new-key
         (merge schema/paragraph {:id op-id, :time op-time, :editing? true}))))))
 
-(defn edit [db op-data session-id op-id op-time]
-  (assoc-in db [:markdown op-data :editing?] true))
+(defn edit [db op-data sid op-id op-time]
+  (-> db
+      (update-in
+       [:markdown op-data]
+       (fn [paragraph] (assoc paragraph :editing? true :time op-time)))
+      (assoc-in [:sessions sid :focused-id] op-data)))
 
-(defn finish-editing [db op-data session-id op-id op-time]
-  (assoc-in db [:markdown op-data :editing?] false))
+(defn finish-editing [db op-data sid op-id op-time]
+  (-> db
+      (assoc-in [:markdown op-data :editing?] false)
+      (assoc-in [:sessions sid :focused-id] nil)))
 
 (defn move [db op-data session-id op-id op-time]
   (let [target-key (:target op-data), base-key (:base op-data)]
@@ -31,8 +37,10 @@
              paragraph (get markdown target-key)]
          (-> markdown (assoc new-key paragraph) (dissoc target-key)))))))
 
-(defn remove-one [db op-data session-id op-id op-time]
-  (update db :markdown (fn [markdown] (dissoc markdown op-data))))
+(defn remove-one [db op-data sid op-id op-time]
+  (-> db
+      (update :markdown (fn [markdown] (dissoc markdown op-data)))
+      (assoc-in [:sessions sid :focused-id] nil)))
 
 (defn update-content [db op-data session-id op-id op-time]
   (update-in

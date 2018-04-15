@@ -12,8 +12,9 @@
             [respo-message.comp.msg-list :refer [comp-msg-list]]
             [app.comp.reel :refer [comp-reel]]
             [app.schema :refer [dev?]]
-            [app.comp.editor :refer [comp-editor]]
-            [app.comp.raw-text :refer [comp-raw-text]]))
+            [app.comp.previewer :refer [comp-previewer]]
+            [app.comp.raw-text :refer [comp-raw-text]]
+            [app.comp.editor-panel :refer [comp-editor-panel]]))
 
 (defcomp
  comp-offline
@@ -33,21 +34,36 @@
    (if (nil? store)
      (comp-offline)
      (div
-      {:style (merge ui/global ui/fullscreen ui/row)}
-      (comp-navigation (:logged-in? store) (:count store))
-      (if (:logged-in? store)
-        (let [router (:router store)]
-          (case (:name router)
-            :profile (comp-profile (:user store))
-            :home
-              (div
-               {:style (merge ui/row ui/flex)}
-               (cursor-> :editor comp-editor states (:markdown store) (:focuses store)))
-            :code (comp-raw-text (:markdown store))
-            (div {:style ui/flex} (<> (pr-str router)))))
-        (comp-login states))
-      (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
+      {:style (merge ui/global ui/fullscreen ui/column)}
+      (div
+       {:style (merge ui/flex ui/row)}
+       (comp-navigation (:logged-in? store) (:count store))
+       (if (:logged-in? store)
+         (let [router (:router store)]
+           (case (:name router)
+             :profile (comp-profile (:user store))
+             :home
+               (div
+                {:style (merge ui/row ui/flex)}
+                (cursor->
+                 :previewer
+                 comp-previewer
+                 states
+                 (:markdown store)
+                 (:focuses store)))
+             :code (comp-raw-text (:markdown store))
+             (div {:style ui/flex} (<> (pr-str router)))))
+         (comp-login states)))
+      (let [focused-id (:focused-id store)]
+        (if (and (:logged-in? store) (some? focused-id))
+          (cursor->
+           :editor
+           comp-editor-panel
+           states
+           focused-id
+           (get (:markdown store) focused-id))))
+      (when dev? (comp-inspect "Store" store {:top 100, :right 0, :max-width "100%"}))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
-      (when dev? (comp-reel (:reel-length store) {:right 0, :bottom 40}))))))
+      (when dev? (comp-reel (:reel-length store) {:right 0, :top 140, :bottom :auto}))))))
 
 (def style-body {:padding "8px 16px"})

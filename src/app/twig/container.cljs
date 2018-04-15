@@ -21,6 +21,7 @@
  (let [logged-in? (some? (:user-id session))
        router (:router session)
        base-data {:logged-in? logged-in?, :session session, :reel-length (count records)}]
+   (println "session" session)
    (merge
     base-data
     (if logged-in?
@@ -28,5 +29,6 @@
        :markdown (:markdown db),
        :focuses (twig-focuses (:sessions db) (:users db)),
        :router router,
-       :count (count (:sessions db))}
+       :count (count (:sessions db)),
+       :focused-id (:focused-id session)}
       nil))))
