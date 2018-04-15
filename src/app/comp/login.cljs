@@ -5,7 +5,8 @@
             [respo.comp.inspect :refer [comp-inspect]]
             [respo-ui.core :as ui]
             [app.schema :as schema]
-            [app.style :as style]))
+            [app.style :as style]
+            [respo-md.comp.md :refer [comp-md-block]]))
 
 (def initial-state {:username "", :password ""})
 
@@ -23,18 +24,24 @@
    (div
     {:style (merge ui/flex ui/center)}
     (div
-     {}
+     {:style (merge ui/center {:max-width 200})}
      (div
       {:style {}}
+      (div
+       {}
+       (comp-md-block
+        "Tabletwo is a realtime Markdown editing tool. Pick a name to join:"
+        {:style {:line-height "1.4em", :text-align :center}}))
+      (=< nil 16)
       (div
        {}
        (input
         {:placeholder "Username",
          :value (:username state),
-         :style ui/input,
+         :style (merge ui/input {:width 200}),
          :on-input (on-input state :username)}))
-      (=< nil 8)
-      (div
+      (comment
+       div
        {}
        (input
         {:placeholder "Password",
