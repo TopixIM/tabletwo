@@ -20,4 +20,9 @@
                 (string/join (str "\n" "\n"))),
     :style (merge
             ui/textarea
-            {:width "100%", :height "100%", :padding 16, :font-size 14, :padding-bottom 240})})))
+            {:width "100%",
+             :height "100%",
+             :padding 16,
+             :font-size 13,
+             :padding-bottom 240,
+             :font-family ui/font-code})})))

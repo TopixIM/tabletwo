@@ -44,7 +44,8 @@
                   :border (str "1px solid " (hsl 240 80 90)),
                   :font-family ui/font-code,
                   :font-size 13,
-                  :border-radius "4px"}),
+                  :border-radius "4px",
+                  :line-height "1.6em"}),
          :placeholder "Paragraph",
          :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
          :on-input (fn [e d! m!]

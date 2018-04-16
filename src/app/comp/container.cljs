@@ -30,7 +30,10 @@
 (defcomp
  comp-container
  (states store)
- (let [state (:data states), session (:session store), focused-id (:focused-id store)]
+ (let [state (:data states)
+       session (:session store)
+       focused-id (:focused-id store)
+       router (:router store)]
    (if (nil? store)
      (comp-offline)
      (div
@@ -39,23 +42,22 @@
        {:style (merge ui/flex ui/row)}
        (comp-navigation (:logged-in? store) (:count store))
        (if (:logged-in? store)
-         (let [router (:router store)]
-           (case (:name router)
-             :profile (comp-profile (:user store) (:data router))
-             :home
-               (div
-                {:style (merge ui/row ui/flex)}
-                (cursor->
-                 :previewer
-                 comp-previewer
-                 states
-                 (:markdown store)
-                 (:focuses store)
-                 focused-id))
-             :code (comp-raw-text (:markdown store))
-             (div {:style ui/flex} (<> (pr-str router)))))
+         (case (:name router)
+           :profile (comp-profile (:user store) (:data router))
+           :home
+             (div
+              {:style (merge ui/row ui/flex)}
+              (cursor->
+               :previewer
+               comp-previewer
+               states
+               (:markdown store)
+               (:focuses store)
+               focused-id))
+           :code (comp-raw-text (:markdown store))
+           (div {:style ui/flex} (<> (pr-str router))))
          (comp-login states)))
-      (let [visible? (and (:logged-in? store) (some? focused-id))]
+      (let [visible? (and (:logged-in? store) (some? focused-id) (= :home (:name router)))]
         (cursor->
          :editor
          comp-editor-panel

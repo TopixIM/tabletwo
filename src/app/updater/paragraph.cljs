@@ -12,7 +12,9 @@
         (assoc-in [:sessions sid :focused-id] new-key))))
 
 (defn edit [db op-data sid op-id op-time]
-  (-> db (assoc-in [:sessions sid :focused-id] op-data)))
+  (-> db
+      (assoc-in [:markdown op-data :time] :op-time)
+      (assoc-in [:sessions sid :focused-id] op-data)))
 
 (defn finish-editing [db op-data sid op-id op-time]
   (-> db (assoc-in [:sessions sid :focused-id] nil)))
