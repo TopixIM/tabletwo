@@ -22,4 +22,5 @@ body * {
 
 .md-block .md-p {
   margin: 16px 0;
+  line-height: 1.6em;
 }

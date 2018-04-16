@@ -15,11 +15,13 @@
  comp-editor-toolbar
  (sort-id)
  (div
-  {:style (merge ui/row {:font-size 16, :justify-content :flex-end})}
+  {:style (merge ui/row {:font-size 16, :justify-content :flex-end, :cursor :move}),
+   :draggable true,
+   :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
   (span
    {:style {:cursor :pointer}, :on-click (action-> :paragraph/remove sort-id)}
    (comp-icon :ios-trash))
   (=< 16 nil)
   (span
    {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
-   (comp-icon :ios-eye))))
+   (comp-icon :chevron-down))))

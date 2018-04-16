@@ -30,7 +30,7 @@
 (defcomp
  comp-container
  (states store)
- (let [state (:data states), session (:session store)]
+ (let [state (:data states), session (:session store), focused-id (:focused-id store)]
    (if (nil? store)
      (comp-offline)
      (div
@@ -50,18 +50,19 @@
                  comp-previewer
                  states
                  (:markdown store)
-                 (:focuses store)))
+                 (:focuses store)
+                 focused-id))
              :code (comp-raw-text (:markdown store))
              (div {:style ui/flex} (<> (pr-str router)))))
          (comp-login states)))
-      (let [focused-id (:focused-id store)]
-        (if (and (:logged-in? store) (some? focused-id))
-          (cursor->
-           :editor
-           comp-editor-panel
-           states
-           focused-id
-           (get (:markdown store) focused-id))))
+      (let [visible? (and (:logged-in? store) (some? focused-id))]
+        (cursor->
+         :editor
+         comp-editor-panel
+         states
+         focused-id
+         (get (:markdown store) focused-id)
+         visible?))
       (when dev? (comp-inspect "Store" store {:top 100, :right 0, :max-width "100%"}))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
       (when dev? (comp-reel (:reel-length store) {:right 0, :top 140, :bottom :auto}))))))

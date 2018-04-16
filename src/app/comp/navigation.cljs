@@ -18,9 +18,10 @@
             :padding "16px",
             :font-size 16,
             :font-family ui/font-fancy,
-            :background-color (hsl 0 0 96)})}
+            :background-color (hsl 0 0 96),
+            :width 80})}
   (div
-   {:style ui/column}
+   {:style (merge ui/column)}
    (div
     {:on-click (action-> :router/change {:name :home}), :style style-entry}
     (<> span "Table2" nil))

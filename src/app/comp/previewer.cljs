@@ -18,7 +18,7 @@
 
 (defcomp
  comp-paragraph
- (states sort-id paragraph focus-list)
+ (states sort-id paragraph focus-list focused?)
  (let [state (or (:data states) {:text "", :time 0})]
    (div
     {:style (merge
@@ -51,9 +51,13 @@
                          :margin-right 8,
                          :border (str "1px solid " (hsl 0 0 90))}}
                 (<> (:name info)))]))))
-     (div
-      {:style {:cursor :pointer}, :on-click (fn [e d! m!] (d! :paragraph/edit sort-id))}
-      (comp-icon :compose)))
+     (if focused?
+       (div
+        {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
+        (comp-icon :eye))
+       (div
+        {:style {:cursor :pointer}, :on-click (action-> :paragraph/edit sort-id)}
+        (comp-icon :compose))))
     (comp-md-block
      (:content paragraph)
      {:class-name "preview-content",
@@ -65,18 +69,19 @@
 
 (defcomp
  comp-previewer
- (states markdown focuses)
+ (states markdown focuses focused-id)
  (div
-  {:style (merge ui/flex {:overflow :auto, :padding-bottom 200})}
+  {:style (merge ui/flex {:overflow :auto, :padding-bottom 320, :padding-top 48})}
   (div
-   {:style {:max-width 960, :margin "0px auto", :padding 32}}
+   {:style {:max-width 960, :margin "0px auto"}}
    (list->
     {:style (merge ui/flex ui/column)}
     (->> markdown
          (sort-by first)
          (map
           (fn [[k paragraph]]
-            [k (cursor-> k comp-paragraph states k paragraph (get focuses k))]))))
+            [k
+             (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k focused-id))]))))
    (=< nil 16)
    (div
     {:style (merge ui/row {:justify-content :flex-end})}
