@@ -16,6 +16,14 @@
     result))
 
 (deftwig
+ twig-profile
+ (sessions users)
+ (->> sessions
+      (filter (fn [[k session]] (some? (:user-id session))))
+      (map (fn [[k session]] [k (get-in users [(:user-id session) :name])]))
+      (into {})))
+
+(deftwig
  twig-container
  (db session records)
  (let [logged-in? (some? (:user-id session))
@@ -28,7 +36,10 @@
       {:user (twig-user (get-in db [:users (:user-id session)])),
        :markdown (:markdown db),
        :focuses (twig-focuses (:sessions db) (:users db)),
-       :router router,
+       :router (assoc
+                router
+                :data
+                (case (:name router) :profile (twig-profile (:sessions db) (:users db)) {})),
        :count (count (:sessions db)),
        :focused-id (:focused-id session)}
       nil))))

@@ -41,7 +41,7 @@
        (if (:logged-in? store)
          (let [router (:router store)]
            (case (:name router)
-             :profile (comp-profile (:user store))
+             :profile (comp-profile (:user store) (:data router))
              :home
                (div
                 {:style (merge ui/row ui/flex)}
