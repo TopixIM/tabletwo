@@ -23,7 +23,7 @@
    (div
     {:style (merge
              ui/column
-             {:background-color :white, :border (str "1px solid " (hsl 0 0 96))}),
+             {:background-color :white, :border-top (str "1px solid " (hsl 0 0 90))}),
      :on-drop (fn [e d! m!]
        (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
          (.stopPropagation (:event e))
@@ -36,7 +36,7 @@
               {:padding "4px 8px",
                :cursor :move,
                :min-height 40,
-               :background-color (hsl 0 0 96)}),
+               :background-color (hsl 0 0 100)}),
       :draggable true,
       :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
      (list->
@@ -75,7 +75,7 @@
   (div
    {:style {:max-width 960, :margin "0px auto"}}
    (list->
-    {:style (merge ui/flex ui/column)}
+    {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
     (->> markdown
          (sort-by first)
          (map

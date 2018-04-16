@@ -22,10 +22,11 @@
              {:height (if visible? "40%" "0%"),
               :background-color (hsl 0 0 100 0.9),
               :border-top (str "1px solid " (hsl 0 0 90)),
-              :padding 8,
-              :padding-left 88,
+              :padding (if visible? 8 0),
+              :padding-left (if visible? 88 false),
               :transition-duration "200ms",
-              :transition-timing-function :linear})}
+              :transition-timing-function :linear,
+              :transition-property :height})}
     (if visible?
       (div
        {:style (merge ui/flex ui/column {:max-width 960, :width "100%", :margin :auto})}

@@ -15,7 +15,9 @@
  comp-editor-toolbar
  (sort-id)
  (div
-  {:style (merge ui/row {:font-size 16, :justify-content :flex-end, :cursor :move}),
+  {:style (merge
+           ui/row
+           {:font-size 16, :justify-content :flex-end, :cursor :move, :padding "0 8px"}),
    :draggable true,
    :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
   (span
