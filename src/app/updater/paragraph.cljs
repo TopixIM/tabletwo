@@ -8,23 +8,14 @@
         (update
          :markdown
          (fn [markdown]
-           (assoc
-            markdown
-            new-key
-            (merge schema/paragraph {:id op-id, :time op-time, :editing? true}))))
+           (assoc markdown new-key (merge schema/paragraph {:id op-id, :time op-time}))))
         (assoc-in [:sessions sid :focused-id] new-key))))
 
 (defn edit [db op-data sid op-id op-time]
-  (-> db
-      (update-in
-       [:markdown op-data]
-       (fn [paragraph] (assoc paragraph :editing? true :time op-time)))
-      (assoc-in [:sessions sid :focused-id] op-data)))
+  (-> db (assoc-in [:sessions sid :focused-id] op-data)))
 
 (defn finish-editing [db op-data sid op-id op-time]
-  (-> db
-      (assoc-in [:markdown op-data :editing?] false)
-      (assoc-in [:sessions sid :focused-id] nil)))
+  (-> db (assoc-in [:sessions sid :focused-id] nil)))
 
 (defn move [db op-data sid op-id op-time]
   (let [target-key (:target op-data)

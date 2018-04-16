@@ -12,7 +12,7 @@
 
 (def notification {:id nil, :kind nil, :text nil})
 
-(def paragraph {:id nil, :editing? false, :title "", :content "", :time nil})
+(def paragraph {:id nil, :title "", :content "", :time nil})
 
 (def router {:name nil, :title nil, :data {}, :router nil})
 
