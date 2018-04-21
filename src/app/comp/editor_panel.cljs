@@ -10,7 +10,8 @@
             [respo-md.comp.md :refer [comp-md-block]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
-            [app.comp.editor-toolbar :refer [comp-editor-toolbar]]))
+            [app.comp.editor-toolbar :refer [comp-editor-toolbar]]
+            [keycode.core :as keycode]))
 
 (defcomp
  comp-editor-panel
@@ -45,11 +46,15 @@
                   :font-family ui/font-code,
                   :font-size 13,
                   :border-radius "4px",
-                  :line-height "1.6em"}),
+                  :line-height "1.6em",
+                  :padding-bottom 120}),
+         :class-name "editor-area",
          :placeholder "Paragraph",
          :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
          :on-input (fn [e d! m!]
            (let [timestamp (.now js/Date)]
              (m! {:time timestamp, :text (:value e)})
              (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
-         :on-focus (action-> :session/focus-to sort-id)}))))))
+         :on-focus (action-> :session/focus-to sort-id),
+         :on-keydown (fn [e d! m!]
+           (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))}))))))

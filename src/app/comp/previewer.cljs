@@ -56,7 +56,14 @@
         {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
         (comp-icon :eye))
        (div
-        {:style {:cursor :pointer}, :on-click (action-> :paragraph/edit sort-id)}
+        {:style {:cursor :pointer},
+         :on-click (fn [e d! m!]
+           (d! :paragraph/edit sort-id)
+           (js/setTimeout
+            (fn []
+              (let [el (.querySelector js/document ".editor-area")]
+                (if (some? el) (.focus el) (.warn js/console "editor box not ready."))))
+            400))}
         (comp-icon :compose))))
     (comp-md-block
      (:content paragraph)
