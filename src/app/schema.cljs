@@ -1,10 +1,7 @@
 
 (ns app.schema )
 
-(def configs
-  {:storage-key "/data/topixim/table-two.edn",
-   :local-storage-key "table-two-storage",
-   :port 11003})
+(def configs {:local-storage-key "tabletwo-storage", :port 11003})
 
 (def database {:sessions {}, :users {}, :markdown {}})
 
