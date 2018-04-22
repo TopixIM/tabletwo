@@ -17,7 +17,6 @@
  comp-editor-panel
  (states sort-id paragraph visible?)
  (let [state (or (:data states) {:text "", :time 0})]
-   (println "show paragraph" paragraph state)
    (div
     {:style (merge
              ui/column

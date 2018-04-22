@@ -11,6 +11,8 @@
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             ["highlight.js" :as hljs]
+            ["escape-html" :as escape-html]
+            [clojure.string :as string]
             ["escape-html" :as escape-html]))
 
 (def supprted-langs
@@ -81,6 +83,9 @@
   {:style (merge ui/flex {:overflow :auto, :padding-bottom 320, :padding-top 48})}
   (div
    {:style {:max-width 960, :margin "0px auto"}}
+   (div
+    {:style {:font-family ui/font-fancy, :margin-bottom 16, :font-size 24}}
+    (<> (:title article)))
    (list->
     {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
     (->> (:paragraphs article)
@@ -91,6 +96,19 @@
    (=< nil 16)
    (div
     {:style (merge ui/row {:justify-content :flex-end})}
+    (button
+     {:style (merge style/button {}),
+      :on-click (fn [e d! m!]
+        (let [child (.open js/window)]
+          (.. child
+              -document
+              (write
+               (let [content (->> (:paragraphs article)
+                                  (map #(:content (last %)))
+                                  (string/join (str "\n" "\n")))]
+                 (str "<pre>" (escape-html content) "</pre>"))))))}
+     (<> "Text"))
+    (=< 16 nil)
     (button
      {:style (merge style/button {}), :on-click (action-> :paragraph/append nil)}
      (<> "Append"))))))

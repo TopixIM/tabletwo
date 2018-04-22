@@ -5,13 +5,7 @@
 (defn append-one [db op-data sid op-id op-time]
   (let [article-id (get-in db [:sessions sid :article-id])
         paragraphs (get-in db [:articles article-id :paragraphs])
-        new-key (do
-                 (println
-                  "look:"
-                  article-id
-                  (get-in db [:articles article-id])
-                  (get-in db [:articles]))
-                 (bisection-util/key-append paragraphs))]
+        new-key (bisection-util/key-append paragraphs)]
     (-> db
         (update-in
          [:articles article-id :paragraphs]
@@ -20,9 +14,9 @@
         (assoc-in [:sessions sid :paragraph-id] new-key))))
 
 (defn edit [db op-data sid op-id op-time]
-  (let [article-id (get-in :sessions sid :article-id), paragraph-id op-data]
+  (let [article-id (get-in db [:sessions sid :article-id]), paragraph-id op-data]
     (-> db
-        (assoc-in [:articles article-id :paragraphs paragraph-id :time] :op-time)
+        (assoc-in [:articles article-id :paragraphs paragraph-id :time] op-time)
         (assoc-in [:sessions sid :paragraph-id] paragraph-id))))
 
 (defn finish-editing [db op-data sid op-id op-time]
