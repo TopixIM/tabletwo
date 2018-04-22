@@ -1,6 +1,8 @@
 
 (ns app.twig.container
-  (:require [recollect.macros :refer [deftwig]] [app.twig.user :refer [twig-user]]))
+  (:require [recollect.macros :refer [deftwig]]
+            [app.twig.user :refer [twig-user]]
+            ["randomcolor" :as color]))
 
 (defn twig-focuses [sessions users]
   (let [result (->> sessions
@@ -41,5 +43,6 @@
                 :data
                 (case (:name router) :profile (twig-profile (:sessions db) (:users db)) {})),
        :count (count (:sessions db)),
-       :focused-id (:focused-id session)}
+       :focused-id (:focused-id session),
+       :color (color/randomColor)}
       nil))))
