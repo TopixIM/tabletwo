@@ -9,14 +9,16 @@
  (articles)
  (->> articles (map (fn [[k v]] [k (dissoc v :paragraphs)])) (into {})))
 
-(defn twig-focuses [sessions users]
+(defn twig-focuses [router-id sessions users]
   (let [result (->> sessions
                     (filter
                      (fn [[k session]]
-                       (and (some? (:user-id session)) (some? (:paragraph-id session)))))
+                       (and (= :article (:name (:router session)))
+                            (some? (:user-id session))
+                            (some? (get session router-id)))))
                     (map
                      (fn [[k session]]
-                       {:id (:paragraph-id session),
+                       {:id (get session router-id),
                         :name (get-in users [(:user-id session) :name]),
                         :sid k}))
                     (group-by :id))]
@@ -44,12 +46,14 @@
                 router
                 :data
                 (case (:name router)
-                  :home {:articles (twig-articles (:articles db)), :focuses {}}
+                  :home
+                    {:articles (twig-articles (:articles db)),
+                     :focuses (twig-focuses :article-id (:sessions db) (:users db))}
                   :article
                     (let [article-id (:article-id session)]
                       {:article (get-in db [:articles article-id]),
                        :paragraph-id (:paragraph-id session),
-                       :focuses (twig-focuses (:sessions db) (:users db))})
+                       :focuses (twig-focuses :paragraph-id (:sessions db) (:users db))})
                   :profile (twig-profile (:sessions db) (:users db))
                   {})),
        :count (count (:sessions db)),

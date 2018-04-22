@@ -15,9 +15,9 @@
 (defcomp
  comp-articles
  (router-data)
- (let [articles (:articles router-data)]
+ (let [articles (:articles router-data), focuses (:focuses router-data)]
    (div
-    {:style {:padding 16}}
+    {:style (merge ui/flex {:padding 16})}
     (div
      {:style {:font-size 24,
               :font-weight 300,
@@ -25,7 +25,7 @@
               :color (hsl 0 0 70)}}
      (<> "Articles"))
     (list->
-     articles
+     {:style (merge ui/row {:flex-wrap :wrap})}
      (->> articles
           (map-val
            (fn [article]
@@ -35,7 +35,9 @@
                        :margin-bottom 16,
                        :padding "8px 16px",
                        :min-width 320,
-                       :cursor :pointer},
+                       :cursor :pointer,
+                       :display :inline-block,
+                       :height 80},
                :on-click (action-> :session/view-article (:id article))}
               (div
                {:style ui/row-parted}
@@ -49,11 +51,19 @@
                  (comp-icon :compose))
                 (=< 16 nil)
                 (span
-                 {:on-click (action-> :article/remove-one (:id article))}
+                 {:on-click (fn [e d! m!]
+                    (if (js/confirm "Sure to delete?") (d! :article/remove-one (:id article))))}
                  (comp-icon :ios-trash))))
-              (div {:style {:color (hsl 0 0 80)}} (<> "who is watching")))))))
+              (div
+               {:style {:color (hsl 0 0 80)}}
+               (list->
+                {:style ui/row}
+                (->> (get focuses (:id article))
+                     (map
+                      (fn [info]
+                        [(:id info) (div {:style {:margin-right 8}} (<> (:name info)))]))))))))))
     (div
      {}
      (button
-      {:style ui/button, :on-click (action-> :article/create (js/prompt "A name"))}
+      {:style style/button, :on-click (action-> :article/create (js/prompt "A name"))}
       (<> "Create Article"))))))

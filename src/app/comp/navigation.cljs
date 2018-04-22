@@ -24,9 +24,8 @@
    {:style (merge ui/column)}
    (div
     {:on-click (action-> :router/change {:name :home}), :style style-entry}
-    (<> span "Table2" nil)))
+    (<> "Table" {:font-size 14})
+    (<> members-count {:font-size 20})))
   (div
    {:style {:cursor "pointer"}, :on-click (action-> :router/change {:name :profile})}
-   (<> (if logged-in? "Me" "Guest"))
-   (=< 8 nil)
-   (<> members-count))))
+   (<> (if logged-in? "Me" "Guest")))))
