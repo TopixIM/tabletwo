@@ -13,7 +13,6 @@
             [app.comp.reel :refer [comp-reel]]
             [app.schema :refer [dev?]]
             [app.comp.previewer :refer [comp-previewer]]
-            [app.comp.raw-text :refer [comp-raw-text]]
             [app.comp.editor-panel :refer [comp-editor-panel]]
             [app.comp.articles :refer [comp-articles]]))
 
@@ -48,7 +47,8 @@
  (states store)
  (let [state (:data states)
        session (:session store)
-       paragraph-id (:paragraph-id store)
+       article-id (:artile-id session)
+       paragraph-id (:paragraph-id session)
        router (:router store)
        router-data (:data router)]
    (if (nil? store)
@@ -69,10 +69,9 @@
                :previewer
                comp-previewer
                states
-               (:paragraphs router-data)
+               (:article router-data)
                (:focuses router-data)
                paragraph-id))
-           :code (comp-raw-text (:markdown store))
            (div {:style ui/flex} (<> (pr-str router))))
          (comp-login states)))
       (let [visible? (and (:logged-in? store)
@@ -83,7 +82,7 @@
          comp-editor-panel
          states
          paragraph-id
-         (get (:markdown store) paragraph-id)
+         (get-in router-data [:article :paragraphs paragraph-id])
          visible?))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
       (comp-status-color (:color store))

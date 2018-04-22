@@ -24,10 +24,7 @@
    {:style (merge ui/column)}
    (div
     {:on-click (action-> :router/change {:name :home}), :style style-entry}
-    (<> span "Table2" nil))
-   (div
-    {:on-click (action-> :router/change {:name :code}), :style style-entry}
-    (<> span "Raw" nil)))
+    (<> span "Table2" nil)))
   (div
    {:style {:cursor "pointer"}, :on-click (action-> :router/change {:name :profile})}
    (<> (if logged-in? "Me" "Guest"))

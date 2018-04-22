@@ -14,7 +14,6 @@
             :user/sign-up user/sign-up
             :user/log-out user/log-out
             :session/remove-notification session/remove-notification
-            :session/focus-to session/focus-to
             :session/view-article session/view-article
             :router/change router/change
             :paragraph/append paragraph/append-one

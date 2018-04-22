@@ -76,19 +76,18 @@
 
 (defcomp
  comp-previewer
- (states markdown focuses focused-id)
+ (states article focuses sort-id)
  (div
   {:style (merge ui/flex {:overflow :auto, :padding-bottom 320, :padding-top 48})}
   (div
    {:style {:max-width 960, :margin "0px auto"}}
    (list->
     {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
-    (->> markdown
+    (->> (:paragraphs article)
          (sort-by first)
          (map
           (fn [[k paragraph]]
-            [k
-             (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k focused-id))]))))
+            [k (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k sort-id))]))))
    (=< nil 16)
    (div
     {:style (merge ui/row {:justify-content :flex-end})}

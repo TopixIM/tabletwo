@@ -25,5 +25,6 @@
    (comp-icon :ios-trash))
   (=< 16 nil)
   (span
-   {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
+   {:style {:cursor :pointer},
+    :on-click (fn [e d! m!] (d! :paragraph/finish-editing sort-id) (m! nil))}
    (comp-icon :chevron-down))))

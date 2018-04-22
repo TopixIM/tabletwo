@@ -47,7 +47,7 @@
                   :home {:articles (twig-articles (:articles db)), :focuses {}}
                   :article
                     (let [article-id (:article-id session)]
-                      {:paragraphs (get-in db [:articles article-id]),
+                      {:article (get-in db [:articles article-id]),
                        :paragraph-id (:paragraph-id session),
                        :focuses (twig-focuses (:sessions db) (:users db))})
                   :profile (twig-profile (:sessions db) (:users db))

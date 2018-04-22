@@ -17,6 +17,7 @@
  comp-editor-panel
  (states sort-id paragraph visible?)
  (let [state (or (:data states) {:text "", :time 0})]
+   (println "show paragraph" paragraph state)
    (div
     {:style (merge
              ui/column
@@ -55,6 +56,5 @@
            (let [timestamp (.now js/Date)]
              (m! {:time timestamp, :text (:value e)})
              (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
-         :on-focus (action-> :session/focus-to sort-id),
          :on-keydown (fn [e d! m!]
            (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))}))))))
