@@ -59,7 +59,8 @@
        (if (:logged-in? store)
          (case (:name router)
            :profile (comp-profile (:user store) (:data router))
-           :home
+           :home (div {} (<> "home") (<> (:data router)))
+           :artible
              (div
               {:style (merge ui/row ui/flex)}
               (cursor->
@@ -72,7 +73,9 @@
            :code (comp-raw-text (:markdown store))
            (div {:style ui/flex} (<> (pr-str router))))
          (comp-login states)))
-      (let [visible? (and (:logged-in? store) (some? focused-id) (= :home (:name router)))]
+      (let [visible? (and (:logged-in? store)
+                          (some? focused-id)
+                          (= :article (:name router)))]
         (cursor->
          :editor
          comp-editor-panel

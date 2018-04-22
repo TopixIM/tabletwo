@@ -1,9 +1,11 @@
 
 (ns app.schema )
 
+(def article {:id nil, :paragraphs {}, :title ""})
+
 (def configs {:local-storage-key "tabletwo-storage", :port 11003})
 
-(def database {:sessions {}, :users {}, :markdown {}})
+(def database {:sessions {}, :users {}, :articles {}})
 
 (def dev? (do ^boolean js/goog.DEBUG))
 
@@ -17,8 +19,9 @@
   {:user-id nil,
    :id nil,
    :nickname nil,
-   :router {:name :home, :data nil, :router nil},
+   :router {:name :home, :data nil},
    :notifications [],
-   :focused-id nil})
+   :paragraph-id nil,
+   :article-id nil})
 
 (def user {:name nil, :id nil, :nickname nil, :avatar nil, :password nil})
