@@ -15,3 +15,13 @@
    db
    [:sessions session-id :notifications]
    (fn [notifications] (subvec notifications 0 op-data))))
+
+(defn view-article [db op-data sid op-id op-time]
+  (update-in
+   db
+   [:sessions sid]
+   (fn [session]
+     (-> session
+         (assoc :article-id op-id)
+         (assoc :paragraph-id nil)
+         (assoc :router {:name :article})))))

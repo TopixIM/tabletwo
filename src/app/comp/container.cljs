@@ -14,7 +14,8 @@
             [app.schema :refer [dev?]]
             [app.comp.previewer :refer [comp-previewer]]
             [app.comp.raw-text :refer [comp-raw-text]]
-            [app.comp.editor-panel :refer [comp-editor-panel]]))
+            [app.comp.editor-panel :refer [comp-editor-panel]]
+            [app.comp.articles :refer [comp-articles]]))
 
 (defcomp
  comp-offline
@@ -47,8 +48,9 @@
  (states store)
  (let [state (:data states)
        session (:session store)
-       focused-id (:focused-id store)
-       router (:router store)]
+       paragraph-id (:paragraph-id store)
+       router (:router store)
+       router-data (:data router)]
    (if (nil? store)
      (comp-offline)
      (div
@@ -58,30 +60,30 @@
        (comp-navigation (:logged-in? store) (:count store))
        (if (:logged-in? store)
          (case (:name router)
-           :profile (comp-profile (:user store) (:data router))
-           :home (div {} (<> "home") (<> (:data router)))
-           :artible
+           :profile (comp-profile (:user store) router-data)
+           :home (comp-articles router-data)
+           :article
              (div
               {:style (merge ui/row ui/flex)}
               (cursor->
                :previewer
                comp-previewer
                states
-               (:markdown store)
-               (:focuses store)
-               focused-id))
+               (:paragraphs router-data)
+               (:focuses router-data)
+               paragraph-id))
            :code (comp-raw-text (:markdown store))
            (div {:style ui/flex} (<> (pr-str router))))
          (comp-login states)))
       (let [visible? (and (:logged-in? store)
-                          (some? focused-id)
+                          (some? paragraph-id)
                           (= :article (:name router)))]
         (cursor->
          :editor
          comp-editor-panel
          states
-         focused-id
-         (get (:markdown store) focused-id)
+         paragraph-id
+         (get (:markdown store) paragraph-id)
          visible?))
       (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
       (comp-status-color (:color store))
