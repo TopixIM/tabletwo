@@ -71,6 +71,7 @@
                states
                (:article router-data)
                (:focuses router-data)
+               (:members router-data)
                paragraph-id))
            (div {:style ui/flex} (<> (pr-str router))))
          (comp-login states)))

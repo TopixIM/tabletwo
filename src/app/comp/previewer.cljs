@@ -78,14 +78,22 @@
 
 (defcomp
  comp-previewer
- (states article focuses sort-id)
+ (states article focuses members sort-id)
  (div
   {:style (merge ui/flex {:overflow :auto, :padding-bottom 320, :padding-top 48})}
   (div
    {:style {:max-width 960, :margin "0px auto"}}
    (div
-    {:style {:font-family ui/font-fancy, :margin-bottom 16, :font-size 24}}
-    (<> (:title article)))
+    {:style (merge ui/row {:align-items :center})}
+    (<> (:title article) {:font-family ui/font-fancy, :font-size 24})
+    (=< 8 nil)
+    (list->
+     {:style (merge ui/row {:display :inline-block})}
+     (->> members
+          (map
+           (fn [[k username]]
+             [k (span {:style {:margin-right 8, :color (hsl 0 0 70)}} (<> username))])))))
+   (=< nil 16)
    (list->
     {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
     (->> (:paragraphs article)
