@@ -61,7 +61,7 @@
        (if (:logged-in? store)
          (case (:name router)
            :profile (comp-profile (:user store) router-data)
-           :home (comp-articles router-data)
+           :home (cursor-> :articles comp-articles states router-data)
            :article
              (div
               {:style (merge ui/row ui/flex)}

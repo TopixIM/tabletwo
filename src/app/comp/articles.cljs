@@ -10,11 +10,57 @@
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             [keycode.core :as keycode]
-            [respo.util.list :refer [map-val]]))
+            [respo.util.list :refer [map-val]]
+            [respo-alerts.comp.alerts :refer [comp-prompt comp-confirm]]
+            [clojure.string :as string]))
+
+(defcomp
+ comp-article
+ (states article focuses)
+ (div
+  {:style {:background-color (hsl 0 0 96),
+           :margin-right 16,
+           :margin-bottom 16,
+           :padding "8px 16px",
+           :min-width 320,
+           :cursor :pointer,
+           :display :inline-block,
+           :height 80},
+   :on-click (action-> :session/view-article (:id article))}
+  (div
+   {:style ui/row-parted}
+   (<> (:title article))
+   (div
+    {}
+    (cursor->
+     :edit
+     comp-prompt
+     states
+     (comp-icon :compose)
+     "New title?"
+     (:title article)
+     (fn [result d! m!]
+       (println "as result:" result)
+       (when (not (string/blank? result))
+         (d! :article/title {:id (:id article), :title result}))))
+    (=< 16 nil)
+    (cursor->
+     :remove
+     comp-confirm
+     states
+     (comp-icon :ios-trash)
+     "Sure to delete?"
+     (fn [result d! m!] (if result (d! :article/remove-one (:id article)))))))
+  (div
+   {:style {:color (hsl 0 0 80)}}
+   (list->
+    {:style ui/row}
+    (->> (get focuses (:id article))
+         (map (fn [info] [(:id info) (div {:style {:margin-right 8}} (<> (:name info)))])))))))
 
 (defcomp
  comp-articles
- (router-data)
+ (states router-data)
  (let [articles (:articles router-data), focuses (:focuses router-data)]
    (div
     {:style (merge ui/flex {:padding 16})}
@@ -28,42 +74,14 @@
      {:style (merge ui/row {:flex-wrap :wrap})}
      (->> articles
           (map-val
-           (fn [article]
-             (div
-              {:style {:background-color (hsl 0 0 96),
-                       :margin-right 16,
-                       :margin-bottom 16,
-                       :padding "8px 16px",
-                       :min-width 320,
-                       :cursor :pointer,
-                       :display :inline-block,
-                       :height 80},
-               :on-click (action-> :session/view-article (:id article))}
-              (div
-               {:style ui/row-parted}
-               (<> (:title article))
-               (div
-                {}
-                (span
-                 {:on-click (action->
-                             :article/title
-                             {:id (:id article), :title (js/prompt "title")})}
-                 (comp-icon :compose))
-                (=< 16 nil)
-                (span
-                 {:on-click (fn [e d! m!]
-                    (if (js/confirm "Sure to delete?") (d! :article/remove-one (:id article))))}
-                 (comp-icon :ios-trash))))
-              (div
-               {:style {:color (hsl 0 0 80)}}
-               (list->
-                {:style ui/row}
-                (->> (get focuses (:id article))
-                     (map
-                      (fn [info]
-                        [(:id info) (div {:style {:margin-right 8}} (<> (:name info)))]))))))))))
+           (fn [article] (cursor-> (:id article) comp-article states article focuses)))))
     (div
      {}
-     (button
-      {:style style/button, :on-click (action-> :article/create (js/prompt "A name"))}
-      (<> "Create Article"))))))
+     (cursor->
+      :create
+      comp-prompt
+      states
+      (button {:style style/button} (<> "Create Article"))
+      "Title of article:"
+      ""
+      (fn [result d! m!] (when (not (string/blank? result)) (d! :article/create result))))))))
