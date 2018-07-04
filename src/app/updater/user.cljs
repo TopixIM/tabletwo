@@ -15,18 +15,14 @@
            (assoc session :user-id (:id maybe-user))
            (update
             session
-            :notifications
-            (fn [notifications]
-              (conj
-               notifications
-               {:id op-id, :kind :attentive, :text (str "Wrong password for " username)}))))
+            :messages
+            (fn [messages]
+              (assoc messages op-id {:id op-id, :text (str "Wrong password for " username)}))))
          (update
           session
-          :notifications
-          (fn [notifications]
-            (conj
-             notifications
-             {:id op-id, :kind :attentive, :text (str "No user named: " username)}))))))))
+          :messages
+          (fn [messages]
+            (assoc messages op-id {:id op-id, :text (str "No user named: " username)}))))))))
 
 (defn log-out [db op-data session-id op-id op-time]
   (assoc-in db [:sessions session-id :user-id] nil))

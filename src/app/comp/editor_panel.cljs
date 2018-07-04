@@ -27,8 +27,9 @@
               :padding-left (if visible? 88 false),
               :transition-duration "200ms",
               :transition-timing-function :linear,
-              :transition-property :height})}
-    (if visible?
+              :transition-property :height,
+              :position :relative})}
+    (when visible?
       (div
        {:style (merge ui/flex ui/column {:max-width 960, :width "100%", :margin :auto})}
        (comp-editor-toolbar sort-id)
@@ -56,4 +57,9 @@
              (m! {:time timestamp, :text (:value e)})
              (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
          :on-keydown (fn [e d! m!]
-           (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))}))))))
+           (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))})))
+    (when visible?
+      (span
+       {:style {:cursor :pointer, :position :absolute, :right 8, :color :red},
+        :on-click (action-> :paragraph/remove sort-id)}
+       (comp-icon :ios-trash))))))

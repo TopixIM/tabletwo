@@ -21,10 +21,6 @@
    :draggable true,
    :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
   (span
-   {:style {:cursor :pointer}, :on-click (action-> :paragraph/remove sort-id)}
-   (comp-icon :ios-trash))
-  (=< 16 nil)
-  (span
    {:style {:cursor :pointer},
     :on-click (fn [e d! m!] (d! :paragraph/finish-editing sort-id) (m! nil))}
    (comp-icon :chevron-down))))

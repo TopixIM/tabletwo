@@ -20,7 +20,7 @@
    :id nil,
    :nickname nil,
    :router {:name :home, :data nil},
-   :notifications [],
+   :messages {},
    :paragraph-id nil,
    :article-id nil})
 

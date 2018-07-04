@@ -10,6 +10,7 @@
   (let [f (case op
             :session/connect session/connect
             :session/disconnect session/disconnect
+            :session/remove-message session/remove-message
             :user/log-in user/log-in
             :user/sign-up user/sign-up
             :user/log-out user/log-out

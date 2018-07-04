@@ -9,7 +9,7 @@
             [app.comp.navigation :refer [comp-navigation]]
             [app.comp.profile :refer [comp-profile]]
             [app.comp.login :refer [comp-login]]
-            [respo-message.comp.msg-list :refer [comp-msg-list]]
+            [respo-message.comp.messages :refer [comp-messages]]
             [app.comp.reel :refer [comp-reel]]
             [app.schema :refer [dev?]]
             [app.comp.previewer :refer [comp-previewer]]
@@ -61,7 +61,7 @@
        (if (:logged-in? store)
          (case (:name router)
            :profile (comp-profile (:user store) router-data)
-           :home (comp-articles router-data)
+           :home (cursor-> :articles comp-articles states router-data)
            :article
              (div
               {:style (merge ui/row ui/flex)}
@@ -85,9 +85,12 @@
          paragraph-id
          (get-in router-data [:article :paragraphs paragraph-id])
          visible?))
-      (comp-msg-list (get-in store [:session :notifications]) :session/remove-notification)
+      (comp-messages
+       (get-in store [:session :notifications])
+       {}
+       (fn [info d! m!] (d! :session/remove-message info)))
       (comp-status-color (:color store))
-      (when dev? (comp-inspect "Store" store {:top 100, :right 0, :max-width "100%"}))
-      (when dev? (comp-reel (:reel-length store) {:right 0, :top 140, :bottom :auto}))))))
+      (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
+      (when dev? (comp-reel (:reel-length store) {:right 0, :bottom 40}))))))
 
 (def style-body {:padding "8px 16px"})

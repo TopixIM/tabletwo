@@ -35,7 +35,9 @@
         (update-in
          [:articles article-id :paragraphs]
          (fn [paragraphs] (-> paragraphs (assoc new-key paragraph) (dissoc target-key))))
-        (assoc-in [:sessions sid :paragraph-id] new-key))))
+        (update
+         [:sessions sid :paragraph-id]
+         (fn [old-key] (if (some? old-key) new-key nil))))))
 
 (defn remove-one [db op-data sid op-id op-time]
   (let [article-id (get-in db [:sessions sid :article-id])]
