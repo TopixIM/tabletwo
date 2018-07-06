@@ -59,16 +59,25 @@
       :draggable true,
       :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
      (comp-info-list focus-list)
-     (if focused?
-       (div
-        {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
-        (comp-icon :eye))
-       (div
-        {:style {:cursor :pointer},
-         :on-click (fn [e d! m!]
-           (d! :paragraph/edit sort-id)
-           (delay-focus! 400 ".editor-area"))}
-        (comp-icon :compose))))
+     (div
+      {:style ui/row}
+      (if focused?
+        (div
+         {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
+         (comp-icon :eye))
+        (div
+         {:style {:cursor :pointer},
+          :on-click (fn [e d! m!]
+            (d! :paragraph/edit sort-id)
+            (delay-focus! 400 ".editor-area"))}
+         (comp-icon :compose)))
+      (=< 16 nil)
+      (div
+       {:style {:cursor :pointer},
+        :on-click (fn [e d! m!]
+          (d! :paragraph/append-to sort-id)
+          (delay-focus! 400 ".editor-area"))}
+       (comp-icon :android-add-circle))))
     (comp-md-block
      (:content paragraph)
      {:class-name "preview-content",
@@ -100,16 +109,27 @@
   (div
    {:style {:max-width 960, :margin "0px auto"}}
    (div
-    {:style (merge ui/row {:align-items :center})}
-    (<> (:title article) {:font-family ui/font-fancy, :font-size 24})
-    (=< 8 nil)
-    (list->
-     {:style (merge ui/row {:display :inline-block})}
-     (->> members
-          (map
-           (fn [[k username]]
-             [k (span {:style {:margin-right 8, :color (hsl 0 0 70)}} (<> username))]))))
-    (comp-text-viewer article))
+    {:style ui/row-parted}
+    (div
+     {:style (merge ui/row {:align-items :center})}
+     (<> (:title article) {:font-family ui/font-fancy, :font-size 24})
+     (=< 8 nil)
+     (list->
+      {:style (merge ui/row {:display :inline-block})}
+      (->> members
+           (map
+            (fn [[k username]]
+              [k (span {:style {:margin-right 8, :color (hsl 0 0 70)}} (<> username))])))))
+    (div
+     {:style ui/row}
+     (comp-text-viewer article)
+     (=< 16 nil)
+     (button
+      {:style (merge style/button {}),
+       :on-click (fn [e d! m!]
+         (d! :paragraph/prepend nil)
+         (delay-focus! 400 ".editor-area"))}
+      (<> "Prepend"))))
    (=< nil 16)
    (list->
     {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
@@ -117,11 +137,4 @@
          (sort-by first)
          (map
           (fn [[k paragraph]]
-            [k (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k sort-id))]))))
-   (=< nil 16)
-   (div
-    {:style (merge ui/row {:justify-content :flex-end})}
-    (=< 16 nil)
-    (button
-     {:style (merge style/button {}), :on-click (action-> :paragraph/append nil)}
-     (<> "Append"))))))
+            [k (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k sort-id))])))))))

@@ -2,10 +2,10 @@
 (ns app.updater.paragraph
   (:require [bisection-key.util :as bisection-util] [app.schema :as schema]))
 
-(defn append-one [db op-data sid op-id op-time]
+(defn append-to [db op-data sid op-id op-time]
   (let [article-id (get-in db [:sessions sid :article-id])
         paragraphs (get-in db [:articles article-id :paragraphs])
-        new-key (bisection-util/key-append paragraphs)]
+        new-key (bisection-util/key-after paragraphs op-data)]
     (-> db
         (update-in
          [:articles article-id :paragraphs]
@@ -38,6 +38,17 @@
         (update
          [:sessions sid :paragraph-id]
          (fn [old-key] (if (some? old-key) new-key nil))))))
+
+(defn prepend [db op-data sid op-id op-time]
+  (let [article-id (get-in db [:sessions sid :article-id])
+        paragraphs (get-in db [:articles article-id :paragraphs])
+        new-key (bisection-util/key-prepend paragraphs)]
+    (-> db
+        (update-in
+         [:articles article-id :paragraphs]
+         (fn [paragraphs]
+           (assoc paragraphs new-key (merge schema/paragraph {:id op-id, :time op-time}))))
+        (assoc-in [:sessions sid :paragraph-id] new-key))))
 
 (defn remove-one [db op-data sid op-id op-time]
   (let [article-id (get-in db [:sessions sid :article-id])]
