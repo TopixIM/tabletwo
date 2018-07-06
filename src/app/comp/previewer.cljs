@@ -13,7 +13,24 @@
             ["highlight.js" :as hljs]
             ["escape-html" :as escape-html]
             [clojure.string :as string]
-            ["escape-html" :as escape-html]))
+            ["escape-html" :as escape-html]
+            [app.util :refer [delay-focus!]]))
+
+(defcomp
+ comp-info-list
+ (focus-list)
+ (list->
+  {:style ui/row}
+  (->> focus-list
+       (map
+        (fn [info]
+          [(:sid info)
+           (div
+            {:style {:padding "0 8px",
+                     :border-radius "16px",
+                     :margin-right 8,
+                     :border (str "1px solid " (hsl 0 0 90))}}
+            (<> (:name info)))])))))
 
 (def supprted-langs
   {"clojure" "clojure", "javascript" "javascript", "js" "javascript", "bash" "bash"})
@@ -41,18 +58,7 @@
                :background-color (hsl 0 0 100)}),
       :draggable true,
       :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
-     (list->
-      {:style ui/row}
-      (->> focus-list
-           (map
-            (fn [info]
-              [(:sid info)
-               (div
-                {:style {:padding "0 8px",
-                         :border-radius "16px",
-                         :margin-right 8,
-                         :border (str "1px solid " (hsl 0 0 90))}}
-                (<> (:name info)))]))))
+     (comp-info-list focus-list)
      (if focused?
        (div
         {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
@@ -61,11 +67,7 @@
         {:style {:cursor :pointer},
          :on-click (fn [e d! m!]
            (d! :paragraph/edit sort-id)
-           (js/setTimeout
-            (fn []
-              (let [el (.querySelector js/document ".editor-area")]
-                (if (some? el) (.focus el) (.warn js/console "editor box not ready."))))
-            400))}
+           (delay-focus! 400 ".editor-area"))}
         (comp-icon :compose))))
     (comp-md-block
      (:content paragraph)
@@ -75,6 +77,20 @@
         (if (contains? supprted-langs lang)
           (.-value (.highlight hljs (get supprted-langs lang) code))
           (escape-html code)))}))))
+
+(defcomp
+ comp-text-viewer
+ (article)
+ (button
+  {:style (merge style/button {}),
+   :on-click (fn [e d! m!]
+     (let [child (.open js/window)
+           content (->> (:paragraphs article)
+                        (map #(:content (last %)))
+                        (string/join (str "\n" "\n")))
+           html (str "<pre>" (escape-html content) "</pre>")]
+       (.. child -document (write html))))}
+  (<> "Text")))
 
 (defcomp
  comp-previewer
@@ -92,7 +108,8 @@
      (->> members
           (map
            (fn [[k username]]
-             [k (span {:style {:margin-right 8, :color (hsl 0 0 70)}} (<> username))])))))
+             [k (span {:style {:margin-right 8, :color (hsl 0 0 70)}} (<> username))]))))
+    (comp-text-viewer article))
    (=< nil 16)
    (list->
     {:style (merge ui/flex ui/column {:border (str "1px solid " (hsl 0 0 94))})}
@@ -104,18 +121,6 @@
    (=< nil 16)
    (div
     {:style (merge ui/row {:justify-content :flex-end})}
-    (button
-     {:style (merge style/button {}),
-      :on-click (fn [e d! m!]
-        (let [child (.open js/window)]
-          (.. child
-              -document
-              (write
-               (let [content (->> (:paragraphs article)
-                                  (map #(:content (last %)))
-                                  (string/join (str "\n" "\n")))]
-                 (str "<pre>" (escape-html content) "</pre>"))))))}
-     (<> "Text"))
     (=< 16 nil)
     (button
      {:style (merge style/button {}), :on-click (action-> :paragraph/append nil)}

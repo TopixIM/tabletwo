@@ -36,9 +36,7 @@
      :edit
      comp-prompt
      states
-     (comp-icon :compose)
-     "New title?"
-     (:title article)
+     {:trigger (comp-icon :compose), :text "New title?", :initial (:title article)}
      (fn [result d! m!]
        (println "as result:" result)
        (when (not (string/blank? result))
@@ -48,9 +46,8 @@
      :remove
      comp-confirm
      states
-     (comp-icon :ios-trash)
-     "Sure to delete?"
-     (fn [result d! m!] (if result (d! :article/remove-one (:id article)))))))
+     {:trigger (comp-icon :ios-trash), :text "Sure to delete?"}
+     (fn [e d! m!] (d! :article/remove-one (:id article))))))
   (div
    {:style {:color (hsl 0 0 80)}}
    (list->
@@ -81,7 +78,7 @@
       :create
       comp-prompt
       states
-      (button {:style style/button} (<> "Create Article"))
-      "Title of article:"
-      ""
+      {:trigger (button {:style style/button} (<> "Create Article")),
+       :text "Title of article:",
+       :initial ""}
       (fn [result d! m!] (when (not (string/blank? result)) (d! :article/create result))))))))
