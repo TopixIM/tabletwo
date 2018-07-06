@@ -11,7 +11,8 @@
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             [app.comp.editor-toolbar :refer [comp-editor-toolbar]]
-            [keycode.core :as keycode]))
+            [keycode.core :as keycode]
+            [respo-alerts.comp.alerts :refer [comp-confirm]]))
 
 (defcomp
  comp-editor-panel
@@ -59,7 +60,11 @@
          :on-keydown (fn [e d! m!]
            (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))})))
     (when visible?
-      (span
-       {:style {:cursor :pointer, :position :absolute, :right 8, :color :red},
-        :on-click (action-> :paragraph/remove sort-id)}
-       (comp-icon :ios-trash))))))
+      (cursor->
+       :delete
+       comp-confirm
+       states
+       {:trigger (comp-icon :ios-trash),
+        :style {:cursor :pointer, :position :absolute, :right 8, :color :red},
+        :text "Sure to delete?"}
+       (fn [e d! m!] (d! :paragraph/remove sort-id)))))))
