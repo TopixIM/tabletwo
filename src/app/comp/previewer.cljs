@@ -95,6 +95,7 @@
    :on-click (fn [e d! m!]
      (let [child (.open js/window)
            content (->> (:paragraphs article)
+                        (sort-by first)
                         (map #(:content (last %)))
                         (string/join (str "\n" "\n" "----" "\n" "\n")))
            html (str "<pre>" (escape-html content) "</pre>")]
