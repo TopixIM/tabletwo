@@ -96,7 +96,7 @@
      (let [child (.open js/window)
            content (->> (:paragraphs article)
                         (map #(:content (last %)))
-                        (string/join (str "\n" "\n")))
+                        (string/join (str "\n" "\n" "----" "\n" "\n")))
            html (str "<pre>" (escape-html content) "</pre>")]
        (.. child -document (write html))))}
   (<> "Text")))

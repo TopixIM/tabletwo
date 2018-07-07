@@ -6959,7 +6959,10 @@
                           :data {
                            "T" {:type :leaf, :by "root", :at 1530897428074, :text "str", :id "Sygfnz4mpMX"}
                            "j" {:type :leaf, :by "root", :at 1530897428074, :text "\\newline", :id "BJbM2MNmTzQ"}
+                           "l" {:type :leaf, :by "root", :at 1530946618825, :text "\\newline", :id "SJXB4yAMX"}
+                           "n" {:type :leaf, :by "root", :at 1530946603337, :text "\"----", :id "Bygb441AMX"}
                            "r" {:type :leaf, :by "root", :at 1530897428074, :text "\\newline", :id "SJzGnzNmpfX"}
+                           "v" {:type :leaf, :by "root", :at 1530946610056, :text "\\newline", :id "Bkq4NyCMX"}
                           }
                          }
                         }
