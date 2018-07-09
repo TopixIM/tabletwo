@@ -17,7 +17,8 @@
             :session/remove-notification session/remove-notification
             :session/view-article session/view-article
             :router/change router/change
-            :paragraph/append paragraph/append-one
+            :paragraph/prepend paragraph/prepend
+            :paragraph/append-to paragraph/append-to
             :paragraph/content paragraph/update-content
             :paragraph/remove paragraph/remove-one
             :paragraph/move paragraph/move

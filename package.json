@@ -10,7 +10,8 @@
     "page": "shadow-cljs clj-run build.main/page",
     "upload": "lumo -c cli -m build.upload",
     "serve": "http-server dist -s",
-    "repl": "rlwrap shadow-cljs clj-repl"
+    "repl": "rlwrap shadow-cljs clj-repl",
+    "ln": "cd target && rm -f entry && ln -s ../entry"
   },
   "repository": {
     "type": "git",
@@ -20,7 +21,7 @@
   "license": "MIT",
   "devDependencies": {
     "http-server": "^0.11.1",
-    "shadow-cljs": "^2.4.14",
+    "shadow-cljs": "^2.4.16",
     "source-map-support": "^0.5.6",
     "ws": "^5.2.1"
   },

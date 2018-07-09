@@ -4,10 +4,11 @@
             [app.service :refer [run-server! sync-clients!]]
             [app.updater :refer [updater]]
             [cljs.reader :refer [read-string]]
-            [app.util :refer [try-verbosely!]]
             [app.reel :refer [reel-reducer refresh-reel reel-schema]]
             ["fs" :as fs]
             ["shortid" :as shortid]
+            ["path" :as path]
+            ["child_process" :as cp]
             [app.node-env :as node-env]))
 
 (def initial-db
@@ -23,19 +24,29 @@
 (defonce *reader-reel (atom @*reel))
 
 (defn persist-db! []
-  (let [filepath (:storage-path node-env/configs)]
-    (println "Saving file on exit:" filepath)
-    (fs/writeFileSync filepath (pr-str (assoc (:db @*reel) :sessions {})))))
+  (let [file-content (pr-str (assoc (:db @*reel) :sessions {}))
+        now (js/Date.)
+        storage-path (:storage-path node-env/configs)
+        backup-path (path/join
+                     js/__dirname
+                     "backups"
+                     (str (inc (.getMonth now)))
+                     (str (.getDate now) "-storage.edn"))]
+    (fs/writeFileSync storage-path file-content)
+    (cp/execSync (str "mkdir -p " (path/dirname backup-path)))
+    (fs/writeFileSync backup-path file-content)
+    (println "Saved file in" storage-path "and saved backup in" backup-path)))
 
 (defn dispatch! [op op-data sid]
   (let [op-id (.generate shortid), op-time (.valueOf (js/Date.))]
     (println "Dispatch!" op sid)
-    (try-verbosely!
+    (try
      (cond
        (= op :effect/persist) (persist-db!)
        :else
          (let [new-reel (reel-reducer @*reel updater op op-data sid op-id op-time)]
-           (reset! *reel new-reel))))))
+           (reset! *reel new-reel)))
+     (catch js/Error e (.error js/console e)))))
 
 (defn on-exit! [code]
   (persist-db!)
