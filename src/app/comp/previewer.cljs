@@ -10,7 +10,7 @@
             [respo-md.comp.md :refer [comp-md-block]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
-            ["highlight.js" :as hljs]
+            ["highlight.js/lib/index" :as hljs]
             ["escape-html" :as escape-html]
             [clojure.string :as string]
             ["escape-html" :as escape-html]
@@ -94,10 +94,19 @@
   {:style (merge style/button {}),
    :on-click (fn [e d! m!]
      (let [child (.open js/window)
-           content (->> (:paragraphs article)
-                        (sort-by first)
-                        (map #(:content (last %)))
-                        (string/join (str "\n" "\n" "----" "\n" "\n")))
+           content (str
+                    "\n"
+                    "# "
+                    (:title article)
+                    "\n"
+                    "\n"
+                    "----"
+                    "\n"
+                    "\n"
+                    (->> (:paragraphs article)
+                         (sort-by first)
+                         (map #(:content (last %)))
+                         (string/join (str "\n" "\n" "----" "\n" "\n"))))
            html (str "<pre>" (escape-html content) "</pre>")]
        (.. child -document (write html))))}
   (<> "Text")))

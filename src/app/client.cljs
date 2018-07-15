@@ -6,7 +6,7 @@
             [cljs.reader :refer [read-string]]
             [app.connection :refer [send! setup-socket!]]
             [app.schema :as schema]
-            ["highlight.js" :as hljs]
+            ["highlight.js/lib/index" :as hljs]
             ["highlight.js/lib/languages/clojure" :as clojure-lang]
             ["highlight.js/lib/languages/bash" :as bash-lang]
             ["highlight.js/lib/languages/javascript" :as javascript-lang]))
