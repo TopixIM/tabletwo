@@ -3,7 +3,7 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros
+            [respo.core
              :refer
              [defcomp <> action-> cursor-> list-> span div button textarea]]
             [respo-ui.comp.icon :refer [comp-icon]]

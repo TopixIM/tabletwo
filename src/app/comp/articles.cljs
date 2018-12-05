@@ -3,13 +3,12 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros
+            [respo.core
              :refer
              [defcomp <> action-> cursor-> list-> span div button textarea]]
             [respo-ui.comp.icon :refer [comp-icon]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
-            [keycode.core :as keycode]
             [respo.util.list :refer [map-val]]
             [respo-alerts.comp.alerts :refer [comp-prompt comp-confirm]]
             [clojure.string :as string]))

@@ -3,7 +3,7 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros
+            [respo.core
              :refer
              [defcomp <> action-> cursor-> list-> span div button textarea]]
             [respo-ui.comp.icon :refer [comp-icon]]
@@ -11,7 +11,6 @@
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             [app.comp.editor-toolbar :refer [comp-editor-toolbar]]
-            [keycode.core :as keycode]
             [respo-alerts.comp.alerts :refer [comp-confirm]]))
 
 (defcomp
@@ -58,7 +57,7 @@
              (m! {:time timestamp, :text (:value e)})
              (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
          :on-keydown (fn [e d! m!]
-           (when (= (:keycode e) keycode/escape) (d! :paragraph/finish-editing sort-id)))})))
+           (when (= (:keycode e) 27) (d! :paragraph/finish-editing sort-id)))})))
     (when visible?
       (cursor->
        :delete

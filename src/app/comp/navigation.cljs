@@ -3,7 +3,7 @@
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
             [respo-ui.colors :as colors]
-            [respo.macros :refer [defcomp <> action-> span div]]
+            [respo.core :refer [defcomp <> action-> span div]]
             [respo.comp.space :refer [=<]]))
 
 (def style-entry {:cursor :pointer, :padding "8px 0"})
