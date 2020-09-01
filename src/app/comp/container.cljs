@@ -55,7 +55,7 @@
      (div
       {:style (merge ui/global ui/fullscreen ui/column)}
       (div
-       {:style (merge ui/flex ui/row)}
+       {:style (merge ui/expand ui/row)}
        (comp-navigation (:logged-in? store) (:count store))
        (if (:logged-in? store)
          (case (:name router)
