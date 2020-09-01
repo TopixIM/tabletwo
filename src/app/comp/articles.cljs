@@ -2,16 +2,13 @@
 (ns app.comp.articles
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
-            [respo-ui.colors :as colors]
-            [respo.core
-             :refer
-             [defcomp <> action-> cursor-> list-> span div button textarea]]
-            [respo-ui.comp.icon :refer [comp-icon]]
+            [respo.core :refer [defcomp <> >> list-> span div button textarea]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             [respo.util.list :refer [map-val]]
-            [respo-alerts.comp.alerts :refer [comp-prompt comp-confirm]]
-            [clojure.string :as string]))
+            [respo-alerts.core :refer [comp-prompt comp-confirm]]
+            [clojure.string :as string]
+            [feather.core :refer [comp-icon comp-i]]))
 
 (defcomp
  comp-article
@@ -25,28 +22,26 @@
            :cursor :pointer,
            :display :inline-block,
            :height 80},
-   :on-click (action-> :session/view-article (:id article))}
+   :on-click (fn [e d!] (d! :session/view-article (:id article)))}
   (div
    {:style ui/row-parted}
    (<> (:title article))
    (div
     {}
-    (cursor->
-     :edit
-     comp-prompt
-     states
-     {:trigger (comp-icon :compose), :text "New title?", :initial (:title article)}
-     (fn [result d! m!]
+    (comp-prompt
+     (>> states :edit)
+     {:trigger (comp-i :edit 14 (hsl 200 80 70)),
+      :text "New title?",
+      :initial (:title article)}
+     (fn [result d!]
        (println "as result:" result)
        (when (not (string/blank? result))
          (d! :article/title {:id (:id article), :title result}))))
     (=< 16 nil)
-    (cursor->
-     :remove
-     comp-confirm
-     states
-     {:trigger (comp-icon :ios-trash), :text "Sure to delete?"}
-     (fn [e d! m!] (d! :article/remove-one (:id article))))))
+    (comp-confirm
+     (>> states :remove)
+     {:trigger (comp-i :trash 14 (hsl 200 80 70)), :text "Sure to delete?"}
+     (fn [e d!] (d! :article/remove-one (:id article))))))
   (div
    {:style {:color (hsl 0 0 80)}}
    (list->
@@ -69,15 +64,12 @@
     (list->
      {:style (merge ui/row {:flex-wrap :wrap})}
      (->> articles
-          (map-val
-           (fn [article] (cursor-> (:id article) comp-article states article focuses)))))
+          (map-val (fn [article] (comp-article (>> states (:id article)) article focuses)))))
     (div
      {}
-     (cursor->
-      :create
-      comp-prompt
-      states
+     (comp-prompt
+      (>> states :create)
       {:trigger (button {:style style/button} (<> "Create Article")),
        :text "Title of article:",
        :initial ""}
-      (fn [result d! m!] (when (not (string/blank? result)) (d! :article/create result))))))))
+      (fn [result d!] (when (not (string/blank? result)) (d! :article/create result))))))))

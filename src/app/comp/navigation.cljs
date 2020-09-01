@@ -2,8 +2,7 @@
 (ns app.comp.navigation
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
-            [respo-ui.colors :as colors]
-            [respo.core :refer [defcomp <> action-> span div]]
+            [respo.core :refer [defcomp <> span div]]
             [respo.comp.space :refer [=<]]))
 
 (def style-entry {:cursor :pointer, :padding "8px 0"})
@@ -23,9 +22,9 @@
   (div
    {:style (merge ui/column)}
    (div
-    {:on-click (action-> :router/change {:name :home}), :style style-entry}
+    {:on-click (fn [e d!] (d! :router/change {:name :home})), :style style-entry}
     (<> "Table" {:font-size 14})
     (<> members-count {:font-size 20})))
   (div
-   {:style {:cursor "pointer"}, :on-click (action-> :router/change {:name :profile})}
+   {:style {:cursor "pointer"}, :on-click (fn [e d!] (d! :router/change {:name :profile}))}
    (<> (if logged-in? "Me" "Guest")))))

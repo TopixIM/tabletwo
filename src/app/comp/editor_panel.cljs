@@ -2,21 +2,18 @@
 (ns app.comp.editor-panel
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
-            [respo-ui.colors :as colors]
-            [respo.core
-             :refer
-             [defcomp <> action-> cursor-> list-> span div button textarea]]
-            [respo-ui.comp.icon :refer [comp-icon]]
+            [respo.core :refer [defcomp <> >> list-> span div button textarea]]
             [respo-md.comp.md :refer [comp-md-block]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
             [app.comp.editor-toolbar :refer [comp-editor-toolbar]]
-            [respo-alerts.comp.alerts :refer [comp-confirm]]))
+            [respo-alerts.core :refer [comp-confirm]]
+            [feather.core :refer [comp-i]]))
 
 (defcomp
  comp-editor-panel
  (states sort-id paragraph visible?)
- (let [state (or (:data states) {:text "", :time 0})]
+ (let [cursor (:cursor states), state (or (:data states) {:text "", :time 0})]
    (div
     {:style (merge
              ui/column
@@ -32,7 +29,7 @@
     (when visible?
       (div
        {:style (merge ui/flex ui/column {:max-width 960, :width "100%", :margin :auto})}
-       (comp-editor-toolbar sort-id)
+       (comp-editor-toolbar states sort-id)
        (=< nil 8)
        (textarea
         {:style (merge
@@ -52,18 +49,16 @@
          :class-name "editor-area",
          :placeholder "Paragraph",
          :value (if (> (:time state) (:time paragraph)) (:text state) (:content paragraph)),
-         :on-input (fn [e d! m!]
+         :on-input (fn [e d!]
            (let [timestamp (.now js/Date)]
-             (m! {:time timestamp, :text (:value e)})
+             (d! cursor {:time timestamp, :text (:value e)})
              (d! :paragraph/content {:id sort-id, :time timestamp, :text (:value e)}))),
-         :on-keydown (fn [e d! m!]
+         :on-keydown (fn [e d!]
            (when (= (:keycode e) 27) (d! :paragraph/finish-editing sort-id)))})))
     (when visible?
-      (cursor->
-       :delete
-       comp-confirm
-       states
-       {:trigger (comp-icon :ios-trash),
+      (comp-confirm
+       (>> states :delete)
+       {:trigger (comp-i :trash 14 (hsl 200 80 70)),
         :style {:cursor :pointer, :position :absolute, :right 8, :color :red},
         :text "Sure to delete?"}
-       (fn [e d! m!] (d! :paragraph/remove sort-id)))))))
+       (fn [e d!] (d! :paragraph/remove sort-id)))))))

@@ -1,7 +1,7 @@
 
 (ns app.client
   (:require [respo.core :refer [render! clear-cache! realize-ssr!]]
-            [respo.cursor :refer [mutate]]
+            [respo.cursor :refer [update-states]]
             [app.comp.container :refer [comp-container]]
             [cljs.reader :refer [read-string]]
             [app.connection :refer [send! setup-socket!]]
@@ -17,7 +17,7 @@
 
 (declare simulate-login!)
 
-(defonce *states (atom {}))
+(defonce *states (atom {:states {:cursor []}}))
 
 (defonce *store (atom nil))
 
@@ -30,7 +30,7 @@
 (defn dispatch! [op op-data]
   (println "Dispatch" op op-data)
   (case op
-    :states (reset! *states ((mutate op-data) @*states))
+    :states (reset! *states (update-states @*states op-data))
     :effect/connect (connect!)
     (send! op op-data)))
 
@@ -44,7 +44,7 @@
 (def mount-target (.querySelector js/document ".app"))
 
 (defn render-app! [renderer]
-  (renderer mount-target (comp-container @*states @*store) dispatch!))
+  (renderer mount-target (comp-container (:states @*states) @*store) dispatch!))
 
 (def ssr? (some? (.querySelector js/document "meta.respo-ssr")))
 
@@ -59,4 +59,9 @@
   (add-watch *states :changes #(render-app! render!))
   (println "App started!"))
 
-(defn reload! [] (clear-cache!) (render-app! render!) (println "Code updated."))
+(defn ^:dev/after-load
+  reload!
+  []
+  (clear-cache!)
+  (render-app! render!)
+  (println "Code updated."))

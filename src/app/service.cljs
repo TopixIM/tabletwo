@@ -4,7 +4,7 @@
             [cljs.reader :as reader]
             [app.twig.container :refer [twig-container]]
             [recollect.diff :refer [diff-twig]]
-            [recollect.twig :refer [render-twig]]
+            [recollect.twig :refer [new-twig-loop! clear-twig-caches!]]
             ["shortid" :as shortid]
             ["ws" :as ws]))
 
@@ -17,7 +17,7 @@
     (.on
      wss
      "connection"
-     (fn [socket]
+     (fn [^js socket]
        (let [sid (.generate shortid)]
          (on-action! :session/connect nil sid)
          (swap! *registry assoc sid socket)
@@ -43,11 +43,12 @@
       (let [session-id sid
             session (get-in db [:sessions sid])
             old-store (or (get @client-caches session-id) nil)
-            new-store (render-twig (twig-container db session records) old-store)
+            new-store (twig-container db session records)
             changes (diff-twig old-store new-store {:key :id})
             socket (get @*registry session-id)]
         (println "Changes for" session-id ":" (count changes))
         (if (and (not (empty? changes)) (some? socket))
           (do
            (.send socket (pr-str changes))
-           (swap! client-caches assoc session-id new-store)))))))
+           (swap! client-caches assoc session-id new-store)))))
+    new-twig-loop!))

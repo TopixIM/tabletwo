@@ -4,12 +4,13 @@
             [app.service :refer [run-server! sync-clients!]]
             [app.updater :refer [updater]]
             [cljs.reader :refer [read-string]]
-            [cumulo-reel.reel :refer [reel-reducer refresh-reel reel-schema]]
+            [cumulo-reel.core :refer [reel-reducer refresh-reel reel-schema]]
             ["fs" :as fs]
             ["shortid" :as shortid]
             ["path" :as path]
             ["child_process" :as cp]
-            [app.node-env :as node-env]))
+            [app.node-env :as node-env]
+            [recollect.twig :refer [new-twig-loop! clear-twig-caches!]]))
 
 (def initial-db
   (let [filepath (:storage-path node-env/configs)]
@@ -65,7 +66,10 @@
   (js/setInterval #(persist-db!) (* 1000 60 10))
   (println "Server started."))
 
-(defn reload! []
+(defn ^:dev/after-load
+  reload!
+  []
   (println "Code updated.")
+  (clear-twig-caches!)
   (reset! *reel (refresh-reel @*reel initial-db updater))
   (sync-clients! @*reader-reel))
