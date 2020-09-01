@@ -10,7 +10,7 @@
             [app.comp.login :refer [comp-login]]
             [respo-message.comp.messages :refer [comp-messages]]
             [cumulo-reel.comp.reel :refer [comp-reel]]
-            [app.schema :refer [dev?]]
+            [app.config :refer [dev?]]
             [app.comp.previewer :refer [comp-previewer]]
             [app.comp.editor-panel :refer [comp-editor-panel]]
             [app.comp.articles :refer [comp-articles]]))

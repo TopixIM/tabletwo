@@ -3,36 +3,41 @@
   (:require [respo.render.html :refer [make-string]]
             [shell-page.core :refer [make-page spit slurp]]
             [app.comp.container :refer [comp-container]]
-            [cljs.reader :refer [read-string]]))
+            [cljs.reader :refer [read-string]]
+            [app.schema :as schema]
+            [app.config :as config]
+            [cumulo-util.build :refer [get-ip!]])
+  (:require-macros [clojure.core.strint :refer [<<]]))
 
-(def base-info {:title "Table Two", :icon "http://cdn.tiye.me/logo/cumulo.png", :ssr nil})
+(def base-info
+  {:title (:title config/site),
+   :icon (:icon config/site),
+   :ssr nil,
+   :inline-styles [(slurp "entry/main.css")]})
 
 (defn dev-page []
   (make-page
    ""
    (merge
     base-info
-    {:styles ["http://localhost:8100/main.css" "/entry/main.css"],
-     :scripts [{:defer? true, :src "/client.js"}],
-     :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")]})))
-
-(def preview? (= "preview" js/process.env.prod))
+    {:styles [(<< "http://~(get-ip!):8100/main.css") "/entry/main.css"],
+     :scripts [{:src "/client.js", :defer? true}],
+     :inline-styles []})))
 
 (defn prod-page []
   (let [html-content (make-string (comp-container {} nil))
         assets (read-string (slurp "dist/assets.edn"))
-        cdn (if preview? "" "http://cdn.tiye.me/tabletwo/")
+        cdn (if config/cdn? (:cdn-url config/site) "")
         prefix-cdn #(str cdn %)]
     (make-page
      html-content
      (merge
       base-info
-      {:styles ["http://cdn.tiye.me/favored-fonts/main.css"],
-       :scripts (map (fn [x] {:defer? true, :src (-> x :output-name prefix-cdn)}) assets),
-       :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")
-                       (slurp "entry/main.css")]}))))
+      {:styles [(:release-ui config/site)],
+       :scripts (map (fn [x] {:src (-> x :output-name prefix-cdn), :defer? true}) assets)}))))
 
 (defn main! []
-  (if (= js/process.env.env "dev")
+  (println "Running mode:" (if config/dev? "dev" "release"))
+  (if config/dev?
     (spit "target/index.html" (dev-page))
     (spit "dist/index.html" (prod-page))))

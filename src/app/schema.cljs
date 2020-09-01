@@ -3,11 +3,7 @@
 
 (def article {:id nil, :paragraphs {}, :title ""})
 
-(def configs {:local-storage-key "tabletwo-storage", :port 11003})
-
 (def database {:sessions {}, :users {}, :articles {}})
-
-(def dev? (do ^boolean js/goog.DEBUG))
 
 (def notification {:id nil, :kind nil, :text nil})
 
