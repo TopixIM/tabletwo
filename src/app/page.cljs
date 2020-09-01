@@ -13,7 +13,7 @@
    (merge
     base-info
     {:styles ["http://localhost:8100/main.css" "/entry/main.css"],
-     :scripts ["/client.js"],
+     :scripts [{:defer? true, :src "/client.js"}],
      :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")]})))
 
 (def preview? (= "preview" js/process.env.prod))
@@ -28,7 +28,7 @@
      (merge
       base-info
       {:styles ["http://cdn.tiye.me/favored-fonts/main.css"],
-       :scripts (map #(-> % :output-name prefix-cdn) assets),
+       :scripts (map (fn [x] {:defer? true, :src (-> x :output-name prefix-cdn)}) assets),
        :inline-styles [(slurp "./node_modules/highlight.js/styles/github-gist.css")
                        (slurp "entry/main.css")]}))))
 

@@ -2,8 +2,7 @@
 (ns app.comp.container
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
-            [respo-ui.colors :as colors]
-            [respo.core :refer [defcomp <> div span action-> cursor-> button]]
+            [respo.core :refer [defcomp <> div span >> button]]
             [respo.comp.inspect :refer [comp-inspect]]
             [respo.comp.space :refer [=<]]
             [app.comp.navigation :refer [comp-navigation]]
@@ -22,7 +21,7 @@
  (div
   {:style (merge ui/global ui/fullscreen ui/center)}
   (span
-   {:style {:cursor :pointer}, :on-click (action-> :effect/connect nil)}
+   {:style {:cursor :pointer}, :on-click (fn [e d!] (d! :effect/connect nil))}
    (<>
     "Socket broken! Click to retry."
     {:font-family ui/font-fancy, :font-weight 100, :font-size 32}))))
@@ -61,34 +60,30 @@
        (if (:logged-in? store)
          (case (:name router)
            :profile (comp-profile (:user store) router-data)
-           :home (cursor-> :articles comp-articles states router-data)
+           :home (comp-articles (>> states :articles) router-data)
            :article
              (div
               {:style (merge ui/row ui/flex)}
-              (cursor->
-               :previewer
-               comp-previewer
-               states
+              (comp-previewer
+               (>> states :previewer)
                (:article router-data)
                (:focuses router-data)
                (:members router-data)
                paragraph-id))
            (div {:style ui/flex} (<> (pr-str router))))
-         (comp-login states)))
+         (comp-login (>> states :login))))
       (let [visible? (and (:logged-in? store)
                           (some? paragraph-id)
                           (= :article (:name router)))]
-        (cursor->
-         :editor
-         comp-editor-panel
-         states
+        (comp-editor-panel
+         (>> states :editor)
          paragraph-id
          (get-in router-data [:article :paragraphs paragraph-id])
          visible?))
       (comp-messages
-       (get-in store [:session :notifications])
+       (get-in store [:session :messages])
        {}
-       (fn [info d! m!] (d! :session/remove-message info)))
+       (fn [info d!] (d! :session/remove-message info)))
       (comp-status-color (:color store))
       (when dev? (comp-inspect "Store" store {:bottom 0, :right 0, :max-width "100%"}))
       (when dev? (comp-reel (:reel-length store) {:right 0, :bottom 40}))))))

@@ -2,11 +2,7 @@
 (ns app.comp.previewer
   (:require [hsl.core :refer [hsl]]
             [respo-ui.core :as ui]
-            [respo-ui.colors :as colors]
-            [respo.core
-             :refer
-             [defcomp <> action-> cursor-> list-> span div button textarea]]
-            [respo-ui.comp.icon :refer [comp-icon]]
+            [respo.core :refer [defcomp <> >> list-> span div button textarea]]
             [respo-md.comp.md :refer [comp-md-block]]
             [respo.comp.space :refer [=<]]
             [app.style :as style]
@@ -14,7 +10,8 @@
             ["escape-html" :as escape-html]
             [clojure.string :as string]
             ["escape-html" :as escape-html]
-            [app.util :refer [delay-focus!]]))
+            [app.util :refer [delay-focus!]]
+            [feather.core :refer [comp-i]]))
 
 (defcomp
  comp-info-list
@@ -38,17 +35,17 @@
 (defcomp
  comp-paragraph
  (states sort-id paragraph focus-list focused?)
- (let [state (or (:data states) {:text "", :time 0})]
+ (let [cursor (:cursor states), state (or (:data states) {:text "", :time 0})]
    (div
     {:style (merge
              ui/column
              {:background-color :white, :border-top (str "1px solid " (hsl 0 0 90))}),
-     :on-drop (fn [e d! m!]
+     :on-drop (fn [e d!]
        (let [data (.. (:event e) -dataTransfer (getData "text" sort-id))]
          (.stopPropagation (:event e))
          (if (not= sort-id data) (d! :paragraph/move {:target data, :base sort-id})))),
-     :on-dragover (fn [e d! m!] (.preventDefault (:event e))),
-     :on-dragenter (fn [e d! m!] (.preventDefault (:event e)))}
+     :on-dragover (fn [e d!] (.preventDefault (:event e))),
+     :on-dragenter (fn [e d!] (.preventDefault (:event e)))}
     (div
      {:style (merge
               ui/row-parted
@@ -57,27 +54,28 @@
                :min-height 40,
                :background-color (hsl 0 0 100)}),
       :draggable true,
-      :on-dragstart (fn [e d! m!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
+      :on-dragstart (fn [e d!] (.. (:event e) -dataTransfer (setData "text" sort-id)))}
      (comp-info-list focus-list)
      (div
       {:style ui/row}
       (if focused?
         (div
-         {:style {:cursor :pointer}, :on-click (action-> :paragraph/finish-editing sort-id)}
-         (comp-icon :eye))
+         {:style {:cursor :pointer},
+          :on-click (fn [e d!] (d! :paragraph/finish-editing sort-id))}
+         (comp-i :eye 14 (hsl 200 80 70)))
         (div
          {:style {:cursor :pointer},
-          :on-click (fn [e d! m!]
+          :on-click (fn [e d!]
             (d! :paragraph/edit sort-id)
             (delay-focus! 400 ".editor-area"))}
-         (comp-icon :compose)))
+         (comp-i :edit 14 (hsl 200 80 70))))
       (=< 16 nil)
       (div
        {:style {:cursor :pointer},
-        :on-click (fn [e d! m!]
+        :on-click (fn [e d!]
           (d! :paragraph/append-to sort-id)
           (delay-focus! 400 ".editor-area"))}
-       (comp-icon :android-add-circle))))
+       (comp-i :file-plus 14 (hsl 200 70 80)))))
     (comp-md-block
      (:content paragraph)
      {:class-name "preview-content",
@@ -92,7 +90,7 @@
  (article)
  (button
   {:style (merge style/button {}),
-   :on-click (fn [e d! m!]
+   :on-click (fn [e d!]
      (let [child (.open js/window)
            content (str
                     "\n"
@@ -136,9 +134,7 @@
      (=< 16 nil)
      (button
       {:style (merge style/button {}),
-       :on-click (fn [e d! m!]
-         (d! :paragraph/prepend nil)
-         (delay-focus! 400 ".editor-area"))}
+       :on-click (fn [e d!] (d! :paragraph/prepend nil) (delay-focus! 400 ".editor-area"))}
       (<> "Prepend"))))
    (=< nil 16)
    (list->
@@ -147,4 +143,4 @@
          (sort-by first)
          (map
           (fn [[k paragraph]]
-            [k (cursor-> k comp-paragraph states k paragraph (get focuses k) (= k sort-id))])))))))
+            [k (comp-paragraph (>> states k) k paragraph (get focuses k) (= k sort-id))])))))))
