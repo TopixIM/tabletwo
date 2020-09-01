@@ -113,7 +113,7 @@
  comp-previewer
  (states article focuses members sort-id)
  (div
-  {:style (merge ui/flex {:overflow :auto, :padding-bottom 320, :padding-top 48})}
+  {:style (merge ui/flex {:overflow :auto, :padding-bottom 20, :padding-top 48})}
   (div
    {:style {:max-width 960, :margin "0px auto"}}
    (div
@@ -143,4 +143,5 @@
          (sort-by first)
          (map
           (fn [[k paragraph]]
-            [k (comp-paragraph (>> states k) k paragraph (get focuses k) (= k sort-id))])))))))
+            [k (comp-paragraph (>> states k) k paragraph (get focuses k) (= k sort-id))])))))
+  (=< nil 300)))
