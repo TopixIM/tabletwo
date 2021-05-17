@@ -24,7 +24,7 @@
     "node-notifier": "^8.0.1",
     "shadow-cljs": "^2.11.1",
     "source-map-support": "^0.5.19",
-    "url-parse": "^1.4.7",
+    "url-parse": "^1.5.0",
     "ws": "^7.3.1"
   },
   "dependencies": {
