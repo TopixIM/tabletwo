@@ -714,54 +714,6 @@
         |button $ quote
           def button $ merge ui/button
             {} (:background-color :white) (:border "\"1px solid #ccc") (:color "\"#ccc") (:border-radius "\"16px") (:padding "\"0 16px")
-    |app.page $ {}
-      :ns $ quote
-        ns app.page
-          :require
-            [] respo.render.html :refer $ [] make-string
-            [] shell-page.core :refer $ [] make-page spit slurp
-            [] app.comp.container :refer $ [] comp-container
-            [] cljs.reader :refer $ [] read-string
-            [] app.schema :as schema
-            [] app.config :as config
-            [] cumulo-util.build :refer $ [] get-ip!
-          :require-macros $ [] clojure.core.strint :refer ([] <<)
-      :defs $ {}
-        |base-info $ quote
-          def base-info $ {}
-            :title $ :title config/site
-            :icon $ :icon config/site
-            :ssr nil
-            :inline-styles $ [] (slurp "\"entry/main.css")
-        |prod-page $ quote
-          defn prod-page () $ let
-              html-content $ make-string
-                comp-container ({}) nil
-              assets $ read-string (slurp "\"dist/assets.edn")
-              cdn $ if config/cdn? (:cdn-url config/site) "\""
-              prefix-cdn $ "#()" str cdn %
-            make-page html-content $ merge base-info
-              {}
-                :styles $ [] (:release-ui config/site)
-                :scripts $ map
-                  fn (x)
-                    {}
-                      :src $ -> x :output-name prefix-cdn
-                      :defer? true
-                  , assets
-        |main! $ quote
-          defn main! ()
-            println "\"Running mode:" $ if config/dev? "\"dev" "\"release"
-            if config/dev?
-              spit "\"target/index.html" $ dev-page
-              spit "\"dist/index.html" $ prod-page
-        |dev-page $ quote
-          defn dev-page () $ make-page "\""
-            merge base-info $ {}
-              :styles $ [] (<< "\"http://~(get-ip!):8100/main.css") "\"/entry/main.css"
-              :scripts $ []
-                {} (:src "\"/client.js") (:defer? true)
-              :inline-styles $ []
     |app.util $ {}
       :ns $ quote (ns app.util)
       :defs $ {}
@@ -922,7 +874,7 @@
           [] respo-md.comp.md :refer $ [] comp-md-block
           [] respo.comp.space :refer $ [] =<
           [] app.style :as style
-          [] "\"highlight.js/lib/index" :as hljs
+          [] "\"highlight.js/lib/core" :default hljs
           [] "\"escape-html" :default escape-html
           [] clojure.string :as string
           [] app.util :refer $ [] delay-focus!
@@ -1040,7 +992,7 @@
                     :style $ {} (:padding "\"0 16px")
                     :highlight $ fn (code lang)
                       if (contains? supprted-langs lang)
-                        .-value $ hljs/highlight (get supprted-langs lang) code
+                        .-value $ .!highlight hljs (get supprted-langs lang) code
                         escape-html code
         |comp-text-viewer $ quote
           defcomp comp-text-viewer (article)
@@ -1070,7 +1022,7 @@
           [] ws-edn.client :refer $ [] ws-connect! ws-send!
           [] recollect.patch :refer $ [] patch-twig
           [] applied-science.js-interop :as j
-          [] "\"highlight.js/lib/index" :as hljs
+          [] "\"highlight.js/lib/core" :default hljs
           [] "\"highlight.js/lib/languages/clojure" :default clojure-lang
           [] "\"highlight.js/lib/languages/bash" :default bash-lang
           [] "\"highlight.js/lib/languages/javascript" :default javascript-lang
@@ -1101,7 +1053,7 @@
                 :on-close $ fn (event) (reset! *store nil) (js/console.error "\"Lost connection!")
                 :on-data on-server-data
         |main! $ quote
-          defn main! () (hljs/registerLanguage "\"clojure" clojure-lang) (hljs/registerLanguage "\"bash" bash-lang) (hljs/registerLanguage "\"javascript" javascript-lang) (render-app!) (connect!)
+          defn main! () (.!registerLanguage hljs "\"clojure" clojure-lang) (.!registerLanguage hljs "\"bash" bash-lang) (.!registerLanguage hljs "\"javascript" javascript-lang) (render-app!) (connect!)
             add-watch *store :changes $ fn (store prev) (render-app!)
             add-watch *states :changes $ fn (states pre) (render-app!)
             on-page-touch $ fn ()

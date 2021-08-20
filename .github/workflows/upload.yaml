@@ -33,7 +33,7 @@ jobs:
         && git clone https://github.com/Respo/respo-ui.calcit.git
         && git clone https://github.com/Respo/respo-message.calcit.git
         && git clone https://github.com/Respo/respo-markdown.calcit.git
-        && git clone https://github.com/Cumulo/cumulo-util.calcit.git
+        && git clone https://github.com/Cumulo/cumulo-util.calcit.git --branch 0.0.2
         && git clone https://github.com/Cumulo/cumulo-reel.calcit.git
         && git clone https://github.com/mvc-works/ws-edn.calcit.git
         && git clone https://github.com/Respo/respo-feather.calcit.git
