@@ -8,7 +8,7 @@ http://repo.topix.im/tabletwo/
 
 ### Workflow
 
-https://github.com/Cumulo/cumulo-workflow
+https://github.com/Cumulo/calcium-workflow
 
 ### License
 
