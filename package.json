@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@calcit/procs": "^0.5.21",
-    "escape-html": "^1.0.3",
-    "shortid": "^2.2.16"
+    "escape-html": "^1.0.3"
   }
 }
