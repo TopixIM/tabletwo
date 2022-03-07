@@ -100,9 +100,9 @@
             :title "\""
         |database $ quote
           def database $ {}
-            :sessions $ {}
-            :users $ {}
-            :articles $ {}
+            :sessions $ do session ({})
+            :users $ do user ({})
+            :articles $ do article ({})
         |router $ quote
           def router $ {} (:name nil) (:title nil)
             :data $ {}
