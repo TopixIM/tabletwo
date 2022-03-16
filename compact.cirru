@@ -335,14 +335,16 @@
                       = :article $ :name (:router session)
                       some? $ :user-id session
                       some? $ get session router-id
-                  map-kv $ fn (k session)
-                    [] k $ {}
-                      :id $ get session router-id
-                      :name $ get-in users
-                        [] (:user-id session) :name
-                      :sid k
-                  ; .to-list
-                  ; group-by $ fn (x) (:id x)
+                  .map-list $ fn (entry)
+                    let-sugar
+                          [] k session
+                          , entry
+                        article-id $ get session router-id
+                      {} (:id article-id)
+                        :name $ get-in users
+                          [] (:user-id session) :name
+                        :sid k
+                  group-by $ fn (x) (:id x)
               , result
         |twig-profile $ quote
           defn twig-profile (sessions users)
@@ -472,6 +474,8 @@
                   {} $ :style
                     merge ui/row $ {} (:flex-wrap :wrap)
                   -> articles (.to-list)
+                    sort $ fn (a b)
+                      &compare (first a) (first b)
                     .map-pair $ fn (k article)
                       [] k $ comp-article
                         >> states $ :id article
@@ -534,8 +538,8 @@
                     {} $ :style ui/row
                     ->
                       get focuses $ :id article
-                      or $ {}
-                      map $ fn (info)
+                      .to-list
+                      .map $ fn (info)
                         [] (:id info)
                           div
                             {} $ :style
@@ -1055,7 +1059,13 @@
                 :on-close $ fn (event) (reset! *store nil) (js/console.error "\"Lost connection!")
                 :on-data on-server-data
         |main! $ quote
-          defn main! () (.!registerLanguage hljs "\"clojure" clojure-lang) (.!registerLanguage hljs "\"bash" bash-lang) (.!registerLanguage hljs "\"javascript" javascript-lang) (render-app!) (connect!)
+          defn main! ()
+            if config/dev? $ load-console-formatter!
+            .!registerLanguage hljs "\"clojure" clojure-lang
+            .!registerLanguage hljs "\"bash" bash-lang
+            .!registerLanguage hljs "\"javascript" javascript-lang
+            render-app!
+            connect!
             add-watch *store :changes $ fn (store prev) (render-app!)
             add-watch *states :changes $ fn (states pre) (render-app!)
             on-page-touch $ fn ()
