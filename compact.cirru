@@ -96,13 +96,13 @@
             :article-id nil
         |article $ quote
           def article $ {} (:id nil)
-            :paragraphs $ {}
+            :paragraphs $ noted paragraph ({})
             :title "\""
         |database $ quote
           def database $ {}
-            :sessions $ do session ({})
-            :users $ do user ({})
-            :articles $ do article ({})
+            :sessions $ noted session ({})
+            :users $ noted user ({})
+            :articles $ noted article ({})
         |router $ quote
           def router $ {} (:name nil) (:title nil)
             :data $ {}
@@ -151,12 +151,11 @@
                   changes $ diff-twig old-store new-store
                     {} $ :key :id
                 ; when config/dev? $ println "\"Changes for" sid "\":" changes (count records)
-                if
-                  not= changes $ []
-                  do
-                    wss-send! sid $ format-cirru-edn
-                      {} (:kind :patch) (:data changes)
-                    swap! *client-caches assoc sid new-store
+                when
+                  not $ empty? changes
+                  wss-send! sid $ format-cirru-edn
+                    {} (:kind :patch) (:data changes)
+                  swap! *client-caches assoc sid new-store
             new-twig-loop!
         |storage-file $ quote
           def storage-file $ if (empty? calcit-dirname)
@@ -247,16 +246,12 @@
                     :text "\"Sure to delete?"
               div
                 {} $ :style
-                  merge ui/column $ {}
+                  merge ui/column $ {} (:transition-duration "\"200ms") (:transition-timing-function :linear) (:position :relative) (:transition-property :height)
                     :height $ if visible? "\"40%" "\"0%"
                     :background-color $ hsl 0 0 100 0.9
                     :border-top $ str "\"1px solid " (hsl 0 0 90)
                     :padding $ if visible? 8 0
                     :padding-left $ if visible? 88 false
-                    :transition-duration "\"200ms"
-                    :transition-timing-function :linear
-                    :transition-property :height
-                    :position :relative
                 when visible? $ div
                   {} $ :style
                     merge ui/flex ui/column $ {} (:max-width 960) (:width "\"100%") (:margin :auto)
@@ -264,14 +259,9 @@
                   =< nil 8
                   textarea $ {}
                     :style $ merge ui/textarea ui/flex
-                      {} (:width "\"100%") (:min-height 120) (:resize :vertical) (:padding 16)
-                        :background-color $ hsl 0 0 100
+                      {} (:width "\"100%") (:min-height "\"20vh") (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius "\"4px") (:line-height "\"1.6em") (:padding-bottom 120)
                         :border $ str "\"1px solid " (hsl 240 80 90)
-                        :font-family ui/font-code
-                        :font-size 13
-                        :border-radius "\"4px"
-                        :line-height "\"1.6em"
-                        :padding-bottom 120
+                        :background-color $ hsl 0 0 100
                     :class-name "\"editor-area"
                     :placeholder "\"Paragraph"
                     :value $ if
@@ -290,9 +280,8 @@
                         = (:keycode e) 27
                         d! :paragraph/finish-editing sort-id
                 when visible? $ comp-icon :trash
-                  {} (:font-size 14)
+                  {} (:font-size 14) (:cursor :pointer)
                     :color $ hsl 200 80 70
-                    :cursor :pointer
                   fn (e d!)
                     .show remove-plugin d! $ fn () (d! :paragraph/remove sort-id)
                 .render remove-plugin
@@ -489,7 +478,9 @@
                         , article focuses
                 div ({})
                   button
-                    {} (:style style/button)
+                    {}
+                      :style $ merge style/button
+                        {} $ :padding "\"4px 16px"
                       :on-click $ fn (e d!)
                         .show create-plugin d! $ fn (result)
                           when
@@ -507,20 +498,15 @@
                   {} $ :text "\"Sure to delete?"
               div
                 {}
-                  :style $ {}
-                    :background-color $ hsl 0 0 96
-                    :margin-right 16
-                    :margin-bottom 16
-                    :padding "\"8px 16px"
-                    :min-width 320
-                    :cursor :pointer
-                    :display :inline-block
-                    :height 80
+                  :style $ {} (:margin-right 16) (:margin-bottom 16) (:padding "\"8px 16px") (:min-width 320) (:cursor :pointer) (:display :inline-block) (:height 80) (:background-color :white) (:border-radius "\"6px")
+                    :border $ str "\"1px solid " (hsl 0 0 90)
+                    :box-shadow $ str "\"0 0 2px " (hsl 0 0 0 0.1)
                   :on-click $ fn (e d!)
                     d! :session/view-article $ :id article
                 div
                   {} $ :style ui/row-parted
-                  <> $ :title article
+                  <> (:title article)
+                    {} $ :font-size 16
                   div ({})
                     comp-icon :edit
                       {} (:font-size 14)
@@ -730,7 +716,7 @@
             :font-family ui/font-fancy
         |button $ quote
           def button $ merge ui/button
-            {} (:background-color :white) (:border "\"1px solid #ccc") (:color "\"#ccc") (:border-radius "\"16px") (:padding "\"0 16px")
+            {} (:background-color :white) (:border "\"1px solid #ccc") (:color "\"#ccc") (:border-radius "\"16px")
     |app.util $ {}
       :ns $ quote (ns app.util)
       :defs $ {}
@@ -836,11 +822,11 @@
           defcomp comp-navigation (logged-in? members-count)
             div
               {} $ :style
-                merge ui/column-parted $ {} (:justify-content :space-between) (:padding |16px) (:font-size 16) (:font-family ui/font-fancy)
-                  :background-color $ hsl 0 0 96
-                  :width 80
+                merge ui/column-parted $ {} (:justify-content :space-between) (:padding |16px) (:font-size 16) (:font-family ui/font-fancy) (:width 80)
+                  :background-color $ hsl 0 0 98
+                  :border-right "\"1px solid #eaeaea"
               div
-                {} $ :style (merge ui/column)
+                {} $ :style ui/column
                 div
                   {}
                     :on-click $ fn (e d!)
@@ -903,10 +889,10 @@
           defcomp comp-previewer (states article focuses members sort-id)
             div
               {} $ :style
-                merge ui/flex $ {} (:overflow :auto) (:padding-bottom 20) (:padding-top 48)
+                merge ui/flex ui/column $ {} (:overflow :auto) (:padding-bottom 20) (:padding-top 32)
               div
                 {} $ :style
-                  {} (:max-width 960) (:margin "\"0px auto")
+                  merge ui/column $ {} (:max-width 960) (:width "\"96%") (:margin "\"0px auto")
                 div
                   {} $ :style ui/row-parted
                   div
@@ -964,8 +950,8 @@
               div
                 {}
                   :style $ merge ui/column
-                    {} (:background-color :white)
-                      :border-top $ str "\"1px solid " (hsl 0 0 90)
+                    {} (:background-color :white) (:border-radius "\"6px") (:margin-bottom 12)
+                      :border $ str "\"1px solid " (hsl 0 0 90)
                   :on-drop $ fn (e d!)
                     let
                         data $ -> (:event e) .-dataTransfer (.!getData "\"text" sort-id)
@@ -976,11 +962,17 @@
                     .preventDefault $ :event e
                   :on-dragenter $ fn (e d!)
                     .preventDefault $ :event e
+                comp-md-block (:content paragraph)
+                  {} (:class-name "\"preview-content")
+                    :style $ {} (:padding "\"0 16px")
+                    :highlight $ fn (code lang)
+                      if (contains? supprted-langs lang)
+                        .-value $ .!highlight hljs (get supprted-langs lang) code
+                        escape-html code
                 div
                   {}
                     :style $ merge ui/row-parted
                       {} (:padding "\"4px 8px") (:cursor :move) (:min-height 40)
-                        :background-color $ hsl 0 0 100
                     :draggable true
                     :on-dragstart $ fn (e d!)
                       -> (:event e) .-dataTransfer $ .!setData "\"text" sort-id
@@ -1004,13 +996,6 @@
                         :style $ {} (:cursor :pointer)
                         :on-click $ fn (e d!) (d! :paragraph/append-to sort-id) (delay-focus! 400 "\".editor-area")
                       comp-i :file-plus 14 $ hsl 200 70 80
-                comp-md-block (:content paragraph)
-                  {} (:class-name "\"preview-content")
-                    :style $ {} (:padding "\"0 16px")
-                    :highlight $ fn (code lang)
-                      if (contains? supprted-langs lang)
-                        .-value $ .!highlight hljs (get supprted-langs lang) code
-                        escape-html code
         |comp-text-viewer $ quote
           defcomp comp-text-viewer (article)
             button
@@ -1088,14 +1073,14 @@
               :effect/connect $ connect!
         |on-server-data $ quote
           defn on-server-data (data)
-            case-default (:kind data) (println "\"unknown server data kind:" data)
+            case-default (:kind data) (js/console.warn "\"unknown server data kind:" data)
               :patch $ let
                   changes $ :data data
                 when config/dev? $ js/console.log "\"Changes" (to-js-data changes)
                 reset! *store $ patch-twig @*store changes
         |simulate-login! $ quote
           defn simulate-login! () $ let
-              raw $ .getItem js/localStorage (:storage-key config/site)
+              raw $ js/localStorage.getItem (:storage-key config/site)
             if (some? raw)
               do (println "\"Found storage.")
                 dispatch! :user/log-in $ parse-cirru-edn raw
