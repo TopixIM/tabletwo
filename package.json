@@ -19,7 +19,7 @@
     "feather-icons": "^4.29.0",
     "highlight.js": "^11.7.0",
     "url-parse": "^1.5.10",
-    "vite": "^4.0.4"
+    "vite": "^4.0.5"
   },
   "dependencies": {
     "@calcit/procs": "^0.6.20",
