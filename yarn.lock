@@ -202,6 +202,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"cirru-color@npm:^0.2.4":
+  version: 0.2.4
+  resolution: "cirru-color@npm:0.2.4"
+  checksum: 10c0/2c4e0e1f01d2304aaa7bffe9c75aea04be7c6ea3f45bc03c86bc50efa9c03bf7d4611d1ec2f613610491bd288adb298f7942bfedcb14595dc4c8bde8dfb77104
+  languageName: node
+  linkType: hard
+
 "classnames@npm:^2.2.5":
   version: 2.3.2
   resolution: "classnames@npm:2.3.2"
@@ -209,10 +216,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"copy-text-to-clipboard@npm:^3.2.2":
+  version: 3.2.2
+  resolution: "copy-text-to-clipboard@npm:3.2.2"
+  checksum: 10c0/451796734a380f7da7b0af27c4d94e449719d3a2f2170e99c7e46eeee54cf3c4b4fdeabc185f6d6e8cbdf932e350831d05e8387c4bae8dcedb7fb961c600ddd4
+  languageName: node
+  linkType: hard
+
 "core-js@npm:^3.1.3":
   version: 3.27.2
   resolution: "core-js@npm:3.27.2"
   checksum: 10c0/dd0041b8bea1033935bb055e15ce81c09eed7f2548485783993bf93923d4e9908b70cdbccac03f9bf6393497eca1d46b476e3eef773fe2ce7d957d1e552ebdbc
+  languageName: node
+  linkType: hard
+
+"dayjs@npm:^1.11.18":
+  version: 1.11.23
+  resolution: "dayjs@npm:1.11.23"
+  checksum: 10c0/69ab04bf19c676e44ab50cc2fca223d265f3dafd107151ef3b0f3ad74d360c37caa602abe62f87cb25d90bd9f6bee003698af47df5b0dbf10a998b7b5f3bb3f1
   languageName: node
   linkType: hard
 
@@ -511,6 +532,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nanoid@npm:^5.1.5":
+  version: 5.1.16
+  resolution: "nanoid@npm:5.1.16"
+  bin:
+    nanoid: bin/nanoid.js
+  checksum: 10c0/04b4f96237f5639716da0e98f453361b313bebaf458bb67dea2d384724fc8b3340a28f032a4373052150bcf3b801d122e291d81ae4fc522969f55c134f4401a3
+  languageName: node
+  linkType: hard
+
 "next-tick@npm:^0.2.2":
   version: 0.2.2
   resolution: "next-tick@npm:0.2.2"
@@ -689,9 +719,13 @@ __metadata:
   dependencies:
     "@calcit/procs": "npm:0.13.77"
     bottom-tip: "npm:^0.1.3"
+    cirru-color: "npm:^0.2.4"
+    copy-text-to-clipboard: "npm:^3.2.2"
+    dayjs: "npm:^1.11.18"
     escape-html: "npm:^1.0.3"
     feather-icons: "npm:^4.29.0"
     highlight.js: "npm:^11.7.0"
+    nanoid: "npm:^5.1.5"
     url-parse: "npm:^1.5.10"
     vite: "npm:^8.2.2"
   languageName: unknown
