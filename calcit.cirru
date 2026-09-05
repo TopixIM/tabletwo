@@ -134,9 +134,11 @@
           :code $ quote
             defcomp comp-article (states article focuses)
               let
+                  article-map $ unsafe-coerce article 'Map
+                  focuses-map $ unsafe-coerce focuses 'Map
                   edit-plugin $ use-prompt (>> states :edit)
                     {} (:text "|New title?")
-                      :initial $ :title article
+                      :initial $ &map:get article-map :title
                   remove-plugin $ use-confirm (>> states :remove)
                     {} $ :text "|Sure to delete?"
                 div
@@ -145,10 +147,10 @@
                       :border $ str "|1px solid " (hsl 0 0 90)
                       :box-shadow $ str "|0 0 2px " (hsl 0 0 0 0.1)
                     :on-click $ fn (e d!)
-                      d! :session/view-article $ :id article
+                      d! :session/view-article $ &map:get article-map :id
                   div
                     {} $ :style ui/row-parted
-                    <> (:title article)
+                    <> $ &map:get article-map :title
                       {} $ :font-size 16
                     div ({})
                       comp-icon :edit
@@ -160,7 +162,7 @@
                             when
                               not $ .blank? result
                               d! :article/title $ {}
-                                :id $ :id article
+                                :id $ &map:get article-map :id
                                 :title result
                       =< 16 nil
                       comp-icon :trash
@@ -169,21 +171,25 @@
                           :cursor :pointer
                         fn (e d!)
                           .show remove-plugin d! $ fn ()
-                            d! :article/remove-one $ :id article
+                            d! :article/remove-one $ &map:get article-map :id
                   div
                     {} $ :style
                       {} $ :color (hsl 0 0 80)
                     list->
                       {} $ :style ui/row
                       ->
-                        get focuses $ :id article
+                        option:unwrap-or
+                          &map:get focuses-map $ &map:get article-map :id
+                          []
                         .to-list
                         .map $ fn (info)
-                          [] (:id info)
-                            div
-                              {} $ :style
-                                {} $ :margin-right 8
-                              <> $ :name info
+                          let
+                              info-map $ unsafe-coerce info 'Map
+                            [] (&map:get info-map :id)
+                              div
+                                {} $ :style
+                                  {} $ :margin-right 8
+                                <> $ &map:get info-map :name
                   .render edit-plugin
                   .render remove-plugin
           :examples $ []
@@ -192,8 +198,11 @@
           :code $ quote
             defcomp comp-articles (states router-data)
               let
-                  articles $ :articles router-data
-                  focuses $ :focuses router-data
+                  router-map $ unsafe-coerce router-data 'Map
+                  articles $ unsafe-coerce
+                    option:unwrap-or (&map:get router-map :articles) ({})
+                    , 'Map
+                  focuses $ option:unwrap-or (&map:get router-map :focuses) ({})
                   create-plugin $ use-prompt (>> states :create)
                     {} (:text "|Title of article:") (:initial |)
                 div
@@ -403,7 +412,12 @@
                     {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
                   :draggable true
                   :on-dragstart $ fn (e d!)
-                    -> (:event e) .-dataTransfer $ .!setData |text sort-id
+                    let
+                        event $ unsafe-coerce
+                          option:unwrap-or (get e :event) (js-object)
+                          , JsObject
+                        data-transfer $ unsafe-coerce (.-dataTransfer event) JsObject
+                      .!setData data-transfer |text sort-id
                 span
                   {}
                     :style $ {} (:cursor :pointer)
@@ -562,14 +576,26 @@
                         :border $ str "|1px solid " (hsl 0 0 90)
                     :on-drop $ fn (e d!)
                       let
-                          data $ -> (:event e) .-dataTransfer (.!getData |text sort-id)
-                        .stopPropagation $ :event e
+                          event $ unsafe-coerce
+                            option:unwrap-or (get e :event) (js-object)
+                            , JsObject
+                          data-transfer $ unsafe-coerce (.-dataTransfer event) JsObject
+                          data $ .!getData data-transfer |text
+                        .!stopPropagation event
                         if (not= sort-id data)
                           d! :paragraph/move $ {} (:target data) (:base sort-id)
                     :on-dragover $ fn (e d!)
-                      .preventDefault $ :event e
+                      let
+                          event $ unsafe-coerce
+                            option:unwrap-or (get e :event) (js-object)
+                            , JsObject
+                        .!preventDefault event
                     :on-dragenter $ fn (e d!)
-                      .preventDefault $ :event e
+                      let
+                          event $ unsafe-coerce
+                            option:unwrap-or (get e :event) (js-object)
+                            , JsObject
+                        .!preventDefault event
                   comp-md-block (:content paragraph)
                     {} (:class-name |preview-content)
                       :style $ {} (:padding "|0 16px")
@@ -583,7 +609,12 @@
                         {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
                       :draggable true
                       :on-dragstart $ fn (e d!)
-                        -> (:event e) .-dataTransfer $ .!setData |text sort-id
+                        let
+                            event $ unsafe-coerce
+                              option:unwrap-or (get e :event) (js-object)
+                              , JsObject
+                            data-transfer $ unsafe-coerce (.-dataTransfer event) JsObject
+                          .!setData data-transfer |text sort-id
                     comp-info-list focus-list
                     div
                       {} $ :style ui/row
@@ -609,9 +640,14 @@
         'comp-previewer $ %{} 'CodeEntry (:doc |)
           :code $ quote
             defcomp comp-previewer (states article focuses members sort-id)
-              div
-                {} $ :style
-                  merge ui/flex ui/column $ {} (:overflow :auto) (:padding-bottom 20) (:padding-top 32)
+              let
+                  article-map $ unsafe-coerce article 'Map
+                  focuses-map $ unsafe-coerce focuses 'Map
+                  members-map $ unsafe-coerce members 'Map
+                  paragraphs-map $ unsafe-coerce (&map:get article-map :paragraphs) 'Map
+                div $ {}
+                  :style $ merge ui/flex ui/column
+                    {} (:overflow :auto) (:padding-bottom 20) (:padding-top 32)
                 div
                   {} $ :style
                     merge ui/column $ {} (:max-width 960) (:width |96%) (:margin "|0px auto")
@@ -620,13 +656,13 @@
                     div
                       {} $ :style
                         merge ui/row $ {} (:align-items :center)
-                      <> (:title article)
+                      <> $ &map:get article-map :title
                         {} (:font-family ui/font-fancy) (:font-size 24)
                       =< 8 nil
                       list->
                         {} $ :style
                           merge ui/row $ {} (:display :inline-block)
-                        -> members (.to-list)
+                        -> members-map (.to-list)
                           .map-pair $ fn (k username)
                             [] k $ span
                               {} $ :style
@@ -647,29 +683,34 @@
                     {} $ :style
                       merge ui/flex ui/column $ {}
                         :border $ str "|1px solid " (hsl 0 0 94)
-                    -> (:paragraphs article) (.to-list) (.sort-by first)
+                    -> paragraphs-map (.to-list) (.sort-by first)
                       .map-pair $ fn (k paragraph)
-                        [] k $ comp-paragraph (>> states k) k paragraph (get focuses k) (= k sort-id)
+                        [] k $ comp-paragraph (>> states k) k paragraph (&map:get focuses-map k) (= k sort-id)
                 =< nil 300
           :examples $ []
           :schema $ :: 'Dynamic
         'comp-text-viewer $ %{} 'CodeEntry (:doc |)
           :code $ quote
             defcomp comp-text-viewer (article)
-              button
-                {}
-                  :style $ merge style/button ({})
-                  :on-click $ fn (e d!)
-                    let
-                        child $ .open js/window
-                        content $ str &newline "|# " (:title article) &newline &newline |---- &newline &newline
-                          -> (:paragraphs article) (.to-list) (.sort-by first)
-                            map $ fn (pair)
-                              :content $ last pair
-                            .join-str $ str &newline &newline |---- &newline &newline
-                        html $ str |<pre> (escape-html content) |</pre>
-                      -> child .-document $ .!write html
-                <> |Text
+              let
+                  article-map $ unsafe-coerce article 'Map
+                button
+                  {}
+                    :style $ merge style/button ({})
+                    :on-click $ fn (e d!)
+                      let
+                          child $ .open js/window
+                          paragraphs $ unsafe-coerce (&map:get article-map :paragraphs) 'Map
+                          content $ str &newline "|# " (&map:get article-map :title) &newline &newline |---- &newline &newline
+                            -> paragraphs (.to-list) (.sort-by first)
+                              map $ fn (pair)
+                                let
+                                    paragraph-map $ unsafe-coerce (last pair) 'Map
+                                  &map:get paragraph-map :content
+                              .join-str $ str &newline &newline |---- &newline &newline
+                          html $ str |<pre> (escape-html content) |</pre>
+                        -> child .-document $ .!write html
+                  <> |Text
           :examples $ []
           :schema $ :: 'Dynamic
         'supprted-langs $ %{} 'CodeEntry (:doc |)
@@ -919,14 +960,14 @@
             defn run-server! (port)
               wss-serve! (&{} :port port)
                 fn (data)
-                  key-match data
+                  match data
                     (:connect sid)
                       do (dispatch! :session/connect nil sid) (println "|New client.")
                     (:message sid msg)
                       let
                           action $ parse-cirru-edn msg
-                        case-default (:kind action) (println "|unknown action:" action)
-                          :op $ dispatch! (:op action) (:data action) sid
+                        case-default (&map:get action :kind) (println "|unknown action:" action)
+                          :op $ dispatch! (&map:get action :op) (&map:get action :data) sid
                     (:disconnect sid)
                       do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                     _ $ println "|unknown data:" data
@@ -941,11 +982,12 @@
           :schema $ :: 'Dynamic
         'sync-clients! $ %{} 'CodeEntry (:doc |)
           :code $ quote
-            defn sync-clients! (reel)
+            defn sync-clients! (reel) (begin-twig-frame!)
               wss-each! $ fn (sid)
                 let
-                    db $ :db reel
-                    records $ :records reel
+                    reel-state $ unsafe-coerce reel 'cumulo-reel.core/ReelState
+                    db $ :db reel-state
+                    records $ :records reel-state
                     session $ get-in db ([] :sessions sid)
                     old-store $ or (get @*client-caches sid) nil
                     new-store $ twig-container db session records
@@ -957,7 +999,7 @@
                     wss-send! sid $ format-cirru-edn
                       {} (:kind :patch) (:data changes)
                     swap! *client-caches assoc sid new-store
-              new-twig-loop!
+              finish-twig-frame!
           :examples $ []
           :schema $ :: 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
@@ -969,7 +1011,8 @@
             app.twig.container :refer $ twig-container
             recollect.diff :refer $ diff-twig
             wss.core :refer $ wss-serve! wss-send! wss-each!
-            recollect.twig :refer $ new-twig-loop! clear-twig-caches!
+            recollect.twig :refer $ clear-twig-caches!
+            recollect.memo :refer $ begin-twig-frame! finish-twig-frame!
             app.$meta :refer $ calcit-dirname
             calcit.std.fs :refer $ path-exists? check-write-file!
             calcit.std.time :refer $ set-interval
