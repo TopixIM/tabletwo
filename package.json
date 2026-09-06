@@ -1,12 +1,13 @@
 {
   "name": "tabletwo",
+  "packageManager": "yarn@4.12.0",
   "version": "0.1.0",
   "description": "A markdown table ot two",
   "main": "index.js",
   "scripts": {
-    "compile-page": "cr --emit-js --once",
+    "compile-page": "calcit calcit.cirru js",
     "release-page": "vite build --base=./",
-    "watch-page": "cr --emit-js/"
+    "watch-page": "calcit calcit.cirru -w"
   },
   "repository": {
     "type": "git",
@@ -16,13 +17,17 @@
   "license": "MIT",
   "devDependencies": {
     "bottom-tip": "^0.1.3",
+    "cirru-color": "^0.2.4",
+    "copy-text-to-clipboard": "^3.2.2",
+    "dayjs": "^1.11.18",
     "feather-icons": "^4.29.0",
     "highlight.js": "^11.7.0",
     "url-parse": "^1.5.10",
-    "vite": "^4.0.4"
+    "vite": "^8.2.2"
   },
   "dependencies": {
-    "@calcit/procs": "^0.6.20",
-    "escape-html": "^1.0.3"
+    "@calcit/procs": "0.13.77",
+    "escape-html": "^1.0.3",
+    "nanoid": "^5.1.5"
   }
 }

@@ -4,6 +4,9 @@
 
 js-out/
 node_modules/
+.calcit/
+.yarn/*.gz
+dist-server/
 dist/
 out-page/
 
@@ -12,5 +15,3 @@ yarn-error.log
 
 storage.cirru
 backups/
-
-dist-server
