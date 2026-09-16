@@ -1095,9 +1095,9 @@
       :defs $ {}
         'twig-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-articles (articles)
-            map-kv (unsafe-coerce articles 'Map)
+            filter-map-kv (unsafe-coerce articles 'Map)
               fn (k v)
-                [] k $ dissoc v :paragraphs
+                %:: MapEntryDecision :keep k $ dissoc v :paragraphs
           :examples $ []
           :schema $ :: 'Dynamic
         'twig-container $ %{} 'CodeEntry (:doc |)
@@ -1202,10 +1202,10 @@
                   filter-kv sessions-map $ fn (k session)
                     some? $ &map:get (unsafe-coerce session 'Map) :user-id
                   , 'Map
-              map-kv filtered $ fn (k session)
+              filter-map-kv filtered $ fn (k session)
                 let
                     session-map $ unsafe-coerce session 'Map
-                  [] k $ option:unwrap-or
+                  %:: MapEntryDecision :keep k $ option:unwrap-or
                     get-in users-map $ [] (&map:get session-map :user-id) :name
                     , nil
           :examples $ []
@@ -1534,8 +1534,8 @@
           :schema $ :: 'Dynamic
         'filter-kv $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn filter-kv (xs f)
-            map-kv xs $ fn (k v)
-              if (f k v) ([] k v) nil
+            filter-map-kv xs $ fn (k v)
+              if (f k v) (%:: MapEntryDecision :keep k v) (%:: MapEntryDecision :drop)
           :examples $ []
           :schema $ :: 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
