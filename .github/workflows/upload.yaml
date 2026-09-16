@@ -35,8 +35,6 @@ jobs:
       with:
         tools: calcit,caps
         caps-version: "0.1.1"
-      with:
-        tools: calcit,caps
 
     - name: Resolve immutable dependencies
       run: |
@@ -59,9 +57,9 @@ jobs:
     - name: Build web and server artifacts
       run: |
         set -euo pipefail
-        calcit calcit.cirru js
+        calcit calcit.cirru --compat-types js
         yarn vite build --base=./
-        calcit calcit.cirru --entry server ir
+        calcit calcit.cirru --compat-types --entry server ir
         mkdir -p dist-server
         cp js-out/program-ir.cirru dist-server/compact.cirru
         cp calcit.cirru deps.cirru package.json dist-server/
