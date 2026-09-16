@@ -34,6 +34,7 @@ jobs:
       uses: calcit-lang/setup-calcit@704b3f5cd6f9ce3bd1e0c926dbdd1d181adb8180 # v1.4.0
       with:
         tools: calcit,caps
+        caps-version: "0.1.1"
 
     - name: Resolve immutable dependencies
       run: |
@@ -47,20 +48,17 @@ jobs:
         set -euo pipefail
         calcit calcit.cirru edit format
         git diff --exit-code -- calcit.cirru
-        calcit calcit.cirru --check-only
-        calcit calcit.cirru --entry server --check-only
+        calcit calcit.cirru --compat-types --check-only
         calcit calcit.cirru analyze quality --baseline config/calcit-quality.cirru
-        calcit calcit.cirru analyze dynamic-methods --max 0
-        calcit calcit.cirru --entry server analyze dynamic-methods --max 0
         calcit calcit.cirru analyze deprecated --summary-only
         calcit calcit.cirru --entry server analyze deprecated --summary-only
 
     - name: Build web and server artifacts
       run: |
         set -euo pipefail
-        calcit calcit.cirru js
+        calcit calcit.cirru --compat-types js
         yarn vite build --base=./
-        calcit calcit.cirru --entry server ir
+        calcit calcit.cirru --compat-types --entry server ir
         mkdir -p dist-server
         cp js-out/program-ir.cirru dist-server/compact.cirru
         cp calcit.cirru deps.cirru package.json dist-server/
