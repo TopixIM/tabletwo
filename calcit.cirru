@@ -3,17 +3,11 @@
   :about "|Machine-generated snapshot. Do not edit directly — changes will be overwritten. Use `calcit query` to inspect and `calcit edit`/`calcit tree` to modify. Run `calcit docs agents --contract` before mutations; use `--full` for first orientation or changed contract digest. Manual edits must follow format and schema conventions, then run `calcit edit format`."
   :package |app
   :entries $ {}
-    :default $ {} (:description |)
-      :init-fn 'app.client/main!
-      :mode :js
-      :reload-fn 'app.client/reload!
+    :default $ {} (:description |) (:init-fn 'app.client/main!) (:mode :js) (:reload-fn 'app.client/reload!)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |lilac/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |bisection-key/ |respo-feather.calcit/ |respo-markdown.calcit/
       :type-slots $ {}
-    :server $ {} (:description |)
-      :init-fn 'app.server/main!
-      :mode :native
-      :reload-fn 'app.server/reload!
+    :server $ {} (:description |) (:init-fn 'app.server/main!) (:mode :native) (:reload-fn 'app.server/reload!)
       :feature-policy $ {}
       :modules $ [] |lilac/ |recollect/ |memof/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |bisection-key/ |calcit.std/ |calcit-wss/
       :type-slots $ {}
@@ -45,8 +39,7 @@
               ws-connect! (str |ws:// host |: port)
                 {}
                   :on-open $ fn (event) (simulate-login!)
-                  :on-close $ fn (event) (reset! *store nil)
-                    js/console.error "|Lost connection!"
+                  :on-close $ fn (event) (reset! *store nil) (js/console.error "|Lost connection!")
                   :on-data on-server-data
           :examples $ []
           :schema $ :: 'Dynamic
@@ -83,8 +76,7 @@
           :code $ quote $ defn on-server-data (data)
             let
                 data-map $ unsafe-coerce data 'Map
-              case-default (&map:get data-map :kind)
-                js/console.warn "|unknown server data kind:" data
+              case-default (&map:get data-map :kind) (js/console.warn "|unknown server data kind:" data)
                 :patch $ let
                     changes $ &map:get data-map :data
                   when config/dev? $ js/console.log |Changes $ to-js-data changes
@@ -154,11 +146,9 @@
                   {} $ :text "|Sure to delete?"
               div
                 {}
-                  :style $ {} (:margin-right 16) (:margin-bottom 16) (:padding "|8px 16px") (:min-width 320) (:cursor :pointer) (:display :inline-block) (:height 80)
-                    :background-color :white
-                    :border-radius |6px
+                  :style $ {} (:margin-right 16) (:margin-bottom 16) (:padding "|8px 16px") (:min-width 320) (:cursor :pointer) (:display :inline-block) (:height 80) (:background-color :white) (:border-radius |6px)
                     :border $ str "|1px solid " $ hsl 0 0 90
-                    :box-shadow $ str "|0 0 2px " $ hsl 0 0 0 0.1
+                    :box-shadow $ str "|0 0 2px " $ hsl 0 0 0
                   :on-click $ fn (e d!)
                     d! :session/view-article $ &map:get article-map :id
                 div
@@ -214,9 +204,7 @@
                   , 'Map
                 focuses $ or (&map:get router-map :focuses) ({})
                 create-plugin $ use-prompt (>> states :create)
-                  {}
-                    :text "|Title of article:"
-                    :initial |
+                  {} (:text "|Title of article:") (:initial |)
               div
                 {} $ :style $ merge
                   unsafe-coerce ui/flex $ :: 'Map 'Tag 'Dynamic
@@ -317,8 +305,7 @@
                         {}
                       :: 'Map 'String 'Dynamic
                     {}
-                    fn (info d!)
-                      d! :session/remove-message info
+                    fn (info d!) (d! :session/remove-message info)
                   comp-status-color $ &map:get store-map :color
                   when dev? $ comp-inspect |Store store $ {} (:bottom 0) (:right 0) (:max-width |100%)
                   when dev? $ comp-reel (&map:get store-map :reel-length)
@@ -339,14 +326,7 @@
         'comp-status-color $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-status-color (color)
             div $ {} $ :style
-              {} (:position :absolute) (:top 8) (:right 8)
-                :background-color color
-                :border-radius |8px
-                :height 16
-                :width 16
-                :transition-duration |200ms
-                :opacity 0.8
-                :pointer-events :none
+              {} (:position :absolute) (:top 8) (:right 8) (:background-color color) (:border-radius |8px) (:height 16) (:width 16) (:transition-duration |200ms) (:opacity 0.8) (:pointer-events :none)
           :examples $ []
           :schema $ :: 'Dynamic
         'style-body $ %{} 'CodeEntry (:doc |)
@@ -391,13 +371,9 @@
                 {} $ :style $ merge
                   unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
                   unsafe-coerce
-                    {}
-                      :transition-duration |200ms
-                      :transition-timing-function :linear
-                      :position :relative
-                      :transition-property :height
+                    {} (:transition-duration |200ms) (:transition-timing-function :linear) (:position :relative) (:transition-property :height)
                       :height $ if visible? |40% |0%
-                      :background-color $ hsl 0 0 100 0.9
+                      :background-color $ hsl 0 0 100
                       :border-top $ str "|1px solid " $ hsl 0 0 90
                       :padding $ if visible? 8 0
                       :padding-left $ if visible? 88 false
@@ -474,8 +450,7 @@
               span
                 {}
                   :style $ {} $ :cursor :pointer
-                  :on-click $ fn (e d!)
-                    d! :paragraph/finish-editing sort-id
+                  :on-click $ fn (e d!) (d! :paragraph/finish-editing sort-id)
                     d!
                       &map:get (unsafe-coerce states 'Map) :cursor
                       , nil
@@ -637,10 +612,7 @@
                     :style $ merge
                       unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
                       unsafe-coerce
-                        {}
-                          :background-color :white
-                          :border-radius |6px
-                          :margin-bottom 12
+                        {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
                           :border $ str "|1px solid " $ hsl 0 0 90
                         :: 'Map 'Tag 'Dynamic
                     :on-drop $ fn (e d!)
@@ -703,8 +675,7 @@
                       div
                         {}
                           :style $ {} $ :cursor :pointer
-                          :on-click $ fn (e d!)
-                            d! :paragraph/finish-editing sort-id
+                          :on-click $ fn (e d!) (d! :paragraph/finish-editing sort-id)
                         comp-i :eye 14 $ hsl 200 80 70
                       div
                         {}
@@ -715,9 +686,7 @@
                     div
                       {}
                         :style $ {} $ :cursor :pointer
-                        :on-click $ fn (e d!)
-                          d! :paragraph/append-to sort-id
-                          delay-focus! 400 |.editor-area
+                        :on-click $ fn (e d!) (d! :paragraph/append-to sort-id) (delay-focus! 400 |.editor-area)
                       comp-i :file-plus 14 $ hsl 200 70 80
           :examples $ []
           :schema $ :: 'Dynamic
@@ -771,9 +740,7 @@
                     button
                       {}
                         :style $ merge style/button $ {}
-                        :on-click $ fn (e d!)
-                          d! :paragraph/prepend nil
-                          delay-focus! 400 |.editor-area
+                        :on-click $ fn (e d!) (d! :paragraph/prepend nil) (delay-focus! 400 |.editor-area)
                       <> |Prepend
                 =< nil 16
                 list->
@@ -892,8 +859,7 @@
             cond
                 exists? js/window
                 , false
-              (exists? js/process)
-                = |true js/process.env.cdn
+              (exists? js/process) (= |true js/process.env.cdn)
               :else false
           :examples $ []
           :schema $ :: 'Dynamic
@@ -904,11 +870,7 @@
           :schema $ :: 'Dynamic
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
-            {} (:port 11003) (:title |Table2)
-              :icon |http://cdn.tiye.me/logo/topix.png
-              :theme |#eeeeff
-              :storage-key |table2
-              :storage-file |storage.cirru
+            {} (:port 11003) (:title |Table2) (:icon |http://cdn.tiye.me/logo/topix.png) (:theme |#eeeeff) (:storage-key |table2) (:storage-file |storage.cirru)
           :examples $ []
           :schema $ :: 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
@@ -973,8 +935,7 @@
           :code $ quote $ defatom *initial-db
             if
               path-exists? $ w-log storage-file
-              do
-                println "|Found local EDN data"
+              do (println "|Found local EDN data")
                 merge schema/database $ parse-cirru-edn $ read-file storage-file
               do (println "|Found no data") schema/database
           :examples $ []
@@ -1016,9 +977,7 @@
                   &map:get config/site :port
               run-server! port
               println $ str "|Server started on port:" port
-            do
-              ; "|init it before doing multi-threading"
-              identity @*reader-reel
+            do (; "|init it before doing multi-threading") (identity @*reader-reel)
             set-interval 200 $ fn () $ render-loop!
             set-interval 600000 $ fn () $ persist-db!
             on-control-c on-exit!
@@ -1040,8 +999,7 @@
           :schema $ :: 'Dynamic
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (println "|Code updated..")
-            if (not config/dev?)
-              raise "|reloading only happens in dev mode"
+            if (not config/dev?) (raise "|reloading only happens in dev mode")
             clear-twig-caches!
             reset! *reel $ refresh-reel @*reel @*initial-db updater
             sync-clients! @*reader-reel
@@ -1068,8 +1026,7 @@
                       case-default (&map:get action :kind) (println "|unknown action:" action)
                         :op $ dispatch! (&map:get action :op) (&map:get action :data) sid
                   (:disconnect sid)
-                    do (println "|Client closed!")
-                      dispatch! :session/disconnect nil sid
+                    do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
           :examples $ []
           :schema $ :: 'Dynamic
@@ -1081,8 +1038,7 @@
           :examples $ []
           :schema $ :: 'Dynamic
         'sync-clients! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn sync-clients! (reel)
-            begin-twig-frame!
+          :code $ quote $ defn sync-clients! (reel) (begin-twig-frame!)
             wss-each! $ fn (sid)
               let
                   reel-state $ unsafe-coerce reel 'cumulo-reel.core/ReelState
@@ -1120,11 +1076,7 @@
       :defs $ {}
         'button $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def button
-            merge ui/button $ {}
-              :background-color :white
-              :border "|1px solid #ccc"
-              :color |#ccc
-              :border-radius |16px
+            merge ui/button $ {} (:background-color :white) (:border "|1px solid #ccc") (:color |#ccc) (:border-radius |16px)
           :examples $ []
           :schema $ :: 'Dynamic
         'link $ %{} 'CodeEntry (:doc |)
@@ -1279,44 +1231,29 @@
           :code $ quote $ defn updater (db op sid op-id op-time)
             match op
               (:session/connect op-data) (session/connect db op-data sid op-id op-time)
-              (:session/disconnect op-data)
-                session/disconnect db op-data sid op-id op-time
-              (:session/remove-message op-data)
-                session/remove-message db op-data sid op-id op-time
+              (:session/disconnect op-data) (session/disconnect db op-data sid op-id op-time)
+              (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
               (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
               (:user/sign-up op-data) (user/sign-up db op-data sid op-id op-time)
               (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
-              (:session/view-article op-data)
-                session/view-article db op-data sid op-id op-time
+              (:session/view-article op-data) (session/view-article db op-data sid op-id op-time)
               (:router/change op-data) (router/change db op-data sid op-id op-time)
-              (:paragraph/prepend op-data)
-                paragraph/para-prepend db op-data sid op-id op-time
-              (:paragraph/append-to op-data)
-                paragraph/append-to db op-data sid op-id op-time
-              (:paragraph/content op-data)
-                paragraph/update-content db op-data sid op-id op-time
-              (:paragraph/remove op-data)
-                paragraph/remove-one db op-data sid op-id op-time
+              (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
+              (:paragraph/append-to op-data) (paragraph/append-to db op-data sid op-id op-time)
+              (:paragraph/content op-data) (paragraph/update-content db op-data sid op-id op-time)
+              (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
               (:paragraph/move op-data) (paragraph/move db op-data sid op-id op-time)
               (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
-              (:paragraph/finish-editing op-data)
-                paragraph/finish-editing db op-data sid op-id op-time
+              (:paragraph/finish-editing op-data) (paragraph/finish-editing db op-data sid op-id op-time)
               (:article/create op-data) (article/create db op-data sid op-id op-time)
-              (:article/remove-one op-data)
-                article/remove-one db op-data sid op-id op-time
-              (:article/title op-data)
-                article/change-title db op-data sid op-id op-time
+              (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
+              (:article/title op-data) (article/change-title db op-data sid op-id op-time)
               _ $ do (println "|Unknown op:" op) db
           :examples $ []
           :schema $ :: 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require
-            [] app.updater.session :as session
-            [] app.updater.user :as user
-            [] app.updater.router :as router
-            [] app.updater.paragraph :as paragraph
-            [] app.updater.article :as article
+          :require ([] app.updater.session :as session) ([] app.updater.user :as user) ([] app.updater.router :as router) ([] app.updater.paragraph :as paragraph) ([] app.updater.article :as article)
     'app.updater.article $ %{} 'FileEntry
       :defs $ {}
         'change-title $ %{} 'CodeEntry (:doc |)
@@ -1396,9 +1333,7 @@
                     get-in db $ [] :articles article-id :paragraphs
                     {}
                   , 'Map
-                new-key $ if (> target-key base-key)
-                  bisection-util/key-before paragraphs base-key
-                  bisection-util/key-after paragraphs base-key
+                new-key $ if (> target-key base-key) (bisection-util/key-before paragraphs base-key) (bisection-util/key-after paragraphs base-key)
                 paragraph $ &map:get paragraphs target-key
               -> db
                 update-in ([] :articles article-id :paragraphs)
@@ -1466,9 +1401,7 @@
           :schema $ :: 'Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
-          :require
-            [] bisection-key.util :as bisection-util
-            [] app.schema :as schema
+          :require ([] bisection-key.util :as bisection-util) ([] app.schema :as schema)
     'app.updater.router $ %{} 'FileEntry
       :defs $ {} $ 'change
         %{} 'CodeEntry (:doc |)
