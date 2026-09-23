@@ -1,7 +1,7 @@
 {
   "name": "tabletwo",
   "packageManager": "yarn@4.12.0",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A markdown table ot two",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "vite": "^8.2.2"
   },
   "dependencies": {
-    "@calcit/procs": "0.14.17",
+    "@calcit/procs": "0.18.1",
     "escape-html": "^1.0.3",
     "nanoid": "^5.1.5"
   }
