@@ -5,8 +5,8 @@
   "description": "A markdown table ot two",
   "main": "index.js",
   "scripts": {
-    "compile-page": "calcit calcit.cirru --compat-types js",
-    "release-page": "vite build --base=./",
+    "compile-page": "calcit calcit.cirru js",
+    "release-page": "vite build --base=${VITE_BASE_URL:-./}",
     "watch-page": "calcit calcit.cirru -w"
   },
   "repository": {
@@ -26,7 +26,7 @@
     "vite": "^8.2.2"
   },
   "dependencies": {
-    "@calcit/procs": "0.18.1",
+    "@calcit/procs": "0.27.0",
     "escape-html": "^1.0.3",
     "nanoid": "^5.1.5"
   }
