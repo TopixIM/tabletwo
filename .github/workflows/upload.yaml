@@ -9,9 +9,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: upload-${{ github.repository }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  queue: max
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - name: Check out repository
       uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -33,7 +39,7 @@ jobs:
     - name: Set up Calcit and Caps
       uses: calcit-lang/setup-calcit@ca701be5a471759e442aa053cd100720bbe1f09f # v1.5.0
       with:
-        version: "0.27.0"
+        deps-file: deps.cirru
         tools: calcit,caps
         caps-version: "0.1.1"
 
@@ -58,9 +64,10 @@ jobs:
       id: asset-path
       env:
         CDN_ORIGIN: https://cos-sh.tiye.me
+        PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-          asset_prefix="${GITHUB_REPOSITORY}/pr/"
+          asset_prefix="${GITHUB_REPOSITORY}/pr/${PR_NUMBER}/${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}/"
         else
           asset_prefix="${GITHUB_REPOSITORY}/"
         fi
@@ -101,7 +108,8 @@ jobs:
 
     - name: Upload and verify frontend assets on COS
       if: steps.cos-credentials.outputs.available == 'true'
-      uses: worktools/cos-upload-action@17e6d213fe9f6772a6090a13c8ba044cd6cbcb09 # v1.1.1
+      uses: worktools/cos-upload-action@v1.2.0
+      timeout-minutes: 10
       with:
         source-dir: dist
         bucket: ${{ secrets.COS_BUCKET }}
