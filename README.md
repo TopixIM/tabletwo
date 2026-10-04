@@ -31,6 +31,15 @@ replays verify dispatch order and empty, Tag, and mixed Tag/String cursors; they
 do not validate DOM interaction or the full frontend. Other UI callbacks remain
 to be reviewed, and the drag host boundary is unchanged.
 
+The editor panel's textarea also uses nominal `DomProps`. Input, keydown and
+delete callbacks have explicit Unit contracts; input sends one `:states` Enum,
+checks text/cursor/clock values, and reuses one timestamp for local and wire
+updates. Eight pure native cases cover empty/Unicode text, mixed cursors, Esc,
+other/missing keycodes and confirmation ordering with mocked clock, confirmation
+and dispatch. They do not exercise the actual dialog, clock, DOM or JS backend.
+Full panel preprocessing remains blocked in the published Alerts/JS-FFI
+`element-first-child` host contract, before complete component acceptance.
+
 The frontend is **not yet accepted**: full strict checks and JS generation fail
 in published WS-EDN, Respo, Alerts/JS-FFI and Markdown dependencies. Strict Caps
 resolution also finds existing dependency conflicts; ordinary Caps/toolchain and

@@ -456,7 +456,7 @@
                       :: 'Map 'Tag 'Dynamic
                   comp-editor-toolbar states sort-id
                   =< nil 8
-                  textarea $ {}
+                  textarea $ %{} respo.schema/DomProps
                     :style $ merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
                       :border $ str "|1px solid " $ hsl 240 80 90
                       :background-color $ hsl 0 0 100
@@ -467,23 +467,51 @@
                       &map:get state :text
                       &map:get paragraph-map :content
                     :on-input $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
                       let
-                          timestamp $ js/Date.now
-                          event-map $ unsafe-coerce e 'Map
-                          value $ &map:get event-map :value
-                        d! cursor $ {} (:time timestamp) (:text value)
+                          timestamp $ decode-map-as (js/Date.now) 'Number
+                          value $ decode-map-as
+                            .unwrap $ get e :value
+                            , 'String
+                          state-cursor $ decode-map-as cursor $ :: 'List 'Dynamic
+                        d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
                         d! $ :: :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
+                        , &unit
                     :on-keydown $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
                       when
                         =
-                          &map:get (unsafe-coerce e 'Map) :keycode
+                          .unwrap-or (get e :keycode) nil
                           , 27
                         d! $ :: :paragraph/finish-editing sort-id
+                      , &unit
                 when visible? $ comp-icon :trash
                   {} (:font-size 14) (:cursor :pointer)
                     :color $ hsl 200 80 70
                   fn (e d!)
-                    .show remove-plugin d! $ fn () $ d! (:: :paragraph/remove sort-id)
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {}
+                          :args $ [] 'Dynamic
+                          :return 'Unit
+                      :return 'Unit
+                    .show remove-plugin d! $ fn ()
+                      hint-fn $ {}
+                        :args $ []
+                        :return 'Unit
+                      d! $ :: :paragraph/remove sort-id
+                      , &unit
+                    , &unit
                 .render remove-plugin
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
