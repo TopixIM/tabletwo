@@ -24,6 +24,13 @@ replay covers article/paragraph grouping, session filters, missing users, empty
 input and the Map EDN roundtrip. These checks do not start a server or access user
 storage.
 
+The editor toolbar's close callback now sends one `:states` Enum rather than the
+obsolete two-argument dispatch call. Its click props use nominal `DomProps`, and
+the callback has the published EventHandler/Unit contract. Three pure native
+replays verify dispatch order and empty, Tag, and mixed Tag/String cursors; they
+do not validate DOM interaction or the full frontend. Other UI callbacks remain
+to be reviewed, and the drag host boundary is unchanged.
+
 The frontend is **not yet accepted**: full strict checks and JS generation fail
 in published WS-EDN, Respo, Alerts/JS-FFI and Markdown dependencies. Strict Caps
 resolution also finds existing dependency conflicts; ordinary Caps/toolchain and

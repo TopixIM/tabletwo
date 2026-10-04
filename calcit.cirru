@@ -519,13 +519,22 @@
                       .set-data! data-transfer |text $ str sort-id
                 , respo.schema/DomProps
               span
-                {}
+                %{} respo.schema/DomProps
                   :style $ {} $ :cursor :pointer
                   :on-click $ fn (e d!)
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {}
+                          :args $ [] 'Dynamic
+                          :return 'Unit
+                      :return 'Unit
                     d! $ :: :paragraph/finish-editing sort-id
-                    d!
-                      &map:get (unsafe-coerce states 'Map) :cursor
-                      , nil
+                    let
+                        states-map $ decode-map-as states $ :: 'Map 'Tag 'Dynamic
+                        cursor-value $ .unwrap $ get states-map :cursor
+                        cursor $ decode-map-as cursor-value $ :: 'List 'Dynamic
+                      d! $ :: :states cursor nil
+                    , &unit
                 comp-i :chevron-down 14 $ hsl 200 80 70
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
