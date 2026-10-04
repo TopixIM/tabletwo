@@ -19,6 +19,21 @@ Frontend dispatch accepts one Enum, while the server still receives the original
 grouping uses typed MapEntry values and checked String IDs. The projected store
 remains a Map, preserving the existing EDN wire representation.
 
+The client store is now `Ref<Option<Map<Tag, Dynamic>>>`: `none` means offline
+and `some` contains the original projected Map. Disconnect, patch, store watchers
+and reconnect checks use this contract. Rendering temporarily unwraps to the
+existing Map/nil component API; component consumers and projected fields still
+need stronger types. Fully refresh after upgrading an already running page,
+because HMR retains old nil/Map atoms and watcher closures. The mount target now
+has the published `DomElementHost` contract without changing its lookup behavior.
+
+The patch entry passes strict preprocessing and targeted JS generation. Its
+actual emitted function with real Recollect/procs 0.28 passes six initial/nested
+Map/list/set update cases and their EDN wire roundtrips in Node 24. Offline/online
+watch, disconnect and reconnect callbacks also pass pure native lifecycle replay
+with mocked rendering/network/logging. These are not full client entry, Vite,
+DOM or production acceptance; open Map fields remain explicit type debt.
+
 Server entry checks and the seven public twig/updater definitions pass. Pure Node
 replay covers article/paragraph grouping, session filters, missing users, empty
 input and the Map EDN roundtrip. These checks do not start a server or access user

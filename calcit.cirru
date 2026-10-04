@@ -21,9 +21,9 @@
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
         '*store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *store nil
+          :code $ quote $ defatom *store (Option :none)
           :examples $ []
-          :schema $ :: 'Ref $ :: 'JsNullish (:: 'Map 'Tag 'Dynamic)
+          :schema $ :: 'Ref $ :: 'Option (:: 'Map 'Tag 'Dynamic)
         'connect! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn connect! ()
             let
@@ -39,7 +39,9 @@
               ws-connect! (str |ws:// host |: port)
                 {}
                   :on-open $ fn (event) (simulate-login!)
-                  :on-close $ fn (event) (reset! *store nil) (js/console.error |Disconnected)
+                  :on-close $ fn (event)
+                    reset! *store $ Option :none
+                    js/console.error |Disconnected
                   :on-data on-server-data
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'ws-edn.client/WsClient)
@@ -76,8 +78,8 @@
               add-watch! *store :changes $ fn (store prev)
                 hint-fn $ {}
                   :args $ []
-                    :: 'JsNullish $ :: 'Map 'Tag 'Dynamic
-                    :: 'JsNullish $ :: 'Map 'Tag 'Dynamic
+                    :: 'Option $ :: 'Map 'Tag 'Dynamic
+                    :: 'Option $ :: 'Map 'Tag 'Dynamic
                   :return 'Unit
                 render-app!
               add-watch! *states :changes $ fn (states pre)
@@ -89,7 +91,7 @@
                 hint-fn $ {}
                   :args $ []
                   :return 'Unit
-                if (nil? @*store) (connect!)
+                if (.none? @*store) (connect!)
                 , &unit
               println |App-started!
           :examples $ []
@@ -100,7 +102,7 @@
           :code $ quote $ def mount-target
             option:unwrap $ query-selector |.app
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'js-ffi.browser/DomElementHost
         'on-server-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-server-data (data)
             do
@@ -110,9 +112,11 @@
                   :patch $ let
                       changes $ &map:get data-map :data
                     when config/dev? $ js/console.log |Changes $ to-js-data changes
-                    reset! *store $ decode-map-as
-                      patch-twig @*store $ assert-type changes $ :: 'List 'recollect.schema/change-op
-                      :: 'Map 'Tag 'Dynamic
+                    let
+                        base $ .unwrap-or @*store nil
+                        next-value $ patch-twig base $ assert-type changes (:: 'List 'recollect.schema/change-op)
+                        next-store $ decode-map-as next-value $ :: 'Map 'Tag 'Dynamic
+                      reset! *store $ Option :some next-store
               , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -128,8 +132,8 @@
                   add-watch! *store :changes $ fn (store prev)
                     hint-fn $ {}
                       :args $ []
-                        :: 'JsNullish $ :: 'Map 'Tag 'Dynamic
-                        :: 'JsNullish $ :: 'Map 'Tag 'Dynamic
+                        :: 'Option $ :: 'Map 'Tag 'Dynamic
+                        :: 'Option $ :: 'Map 'Tag 'Dynamic
                       :return 'Unit
                     render-app!
                   add-watch! *states :changes $ fn (states prev)
@@ -146,7 +150,7 @@
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! mount-target
-              comp-container (&map:get @*states :states) @*store
+              comp-container (&map:get @*states :states) (.unwrap-or @*store nil)
               , dispatch!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
