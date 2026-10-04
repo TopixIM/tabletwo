@@ -675,18 +675,32 @@
               div
                 {} $ :style ui/column
                 div
-                  {}
+                  %{} respo.schema/DomProps
                     :on-click $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
                       d! $ :: :router/change $ {} (:name :home)
+                      , &unit
                     :style style-entry
                   <> |Table $ {} $ :font-size 14
                   <> (str members-count)
                     {} $ :font-size 20
               div
-                {}
+                %{} respo.schema/DomProps
                   :style $ {} $ :cursor |pointer
                   :on-click $ fn (e d!)
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {}
+                          :args $ [] 'Dynamic
+                          :return 'Unit
+                      :return 'Unit
                     d! $ :: :router/change $ {} (:name :profile)
+                    , &unit
                 <> $ if logged-in? |Me |Guest
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)

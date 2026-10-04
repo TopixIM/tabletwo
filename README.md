@@ -52,11 +52,24 @@ checks text/cursor/clock values, and reuses one timestamp for local and wire
 updates. Eight pure native cases cover empty/Unicode text, mixed cursors, Esc,
 other/missing keycodes and confirmation ordering with mocked clock, confirmation
 and dispatch. They do not exercise the actual dialog, clock, DOM or JS backend.
-Full panel preprocessing remains blocked in the published Alerts/JS-FFI
-`element-first-child` host contract, before complete component acceptance.
+Full panel preprocessing still depends on unresolved published Alerts/Respo
+contracts, before complete component acceptance.
+
+导航栏两个点击 props 改为具名 `DomProps`，回调使用已发布 EventHandler 的事件 Map、
+dispatch 与 Unit 合同。原生重放实际回调 AST，验证 home/profile 消息顺序及 Unit 返回；
+没有新增测试文件或强转。完整导航公开检查仍为 1/2，定向 JS 被 Respo 的三条
+pick-attrs/pick-event ToString 告警阻止，不代表 DOM 或完整组件验收通过。
+
+WS-EDN 跟进正式标签 0.0.33、Cumulo Util 0.0.24（传递依赖要求 JS-FFI alpha.11，
+没有追随后续 alpha 或使用源码 hash），旧 WsClient 断言已解除。私有发布依赖及
+工具链核验通过，但严格 Caps 仍有版本冲突。当前服务端完整检查 57/57、原七个
+twig/updater 公开定义全部通过；客户端 228 passed / 17 failed / 1 cascaded /
+137 blocked（383 total），失败定义来自已发布 Respo、Alerts、Markdown。
+原质量基线仍有 55 项回归，预算不放宽；项目没有 definition-attached tests，
+`test --require-match` 为零匹配失败，不把它当通过。
 
 The frontend is **not yet accepted**: full strict checks and JS generation fail
-in published WS-EDN, Respo, Alerts/JS-FFI and Markdown dependencies. Strict Caps
+in published Respo, Alerts and Markdown dependencies. Strict Caps
 resolution also finds existing dependency conflicts; ordinary Caps/toolchain and
 immutable Yarn resolution pass. The existing quality baseline still fails and
 has not been increased. Full UI, Vite build and COS upload are unverified.
