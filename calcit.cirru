@@ -404,12 +404,14 @@
                   router $ if (:logged-in? navigation-view)
                     decode-map-as (&map:get store-map :router) (:: 'Map 'Tag 'Dynamic)
                     {}
-                  router-data $ if (:logged-in? navigation-view)
-                    decode-map-as (&map:get router :data) (:: 'Map 'Tag 'Dynamic)
-                    {}
+                  router-data $ &map:get router :data
                   raw-color $ &map:get store-map :color
                   status-color $ if (nil? raw-color) (Option :none)
                     Option :some $ decode-map-as raw-color 'String
+                  article-data $ if
+                    = (&map:get router :name) :article
+                    decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
+                    {}
                 div
                   {} $ :style $ merge
                     unsafe-coerce ui/global $ :: 'Map 'Tag 'Dynamic
@@ -425,20 +427,22 @@
                         div
                           {} $ :style ui/flex
                           <> $ str router
-                        :profile $ comp-profile (&map:get store-map :user) router-data
-                        :home $ comp-articles (>> states :articles) router-data
+                        :profile $ comp-profile (&map:get store-map :user)
+                          decode-map-as router-data $ :: 'Map 'Number 'Dynamic
+                        :home $ comp-articles (>> states :articles)
+                          decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
                         :article $ div
                           {} $ :style $ merge
                             unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
                             unsafe-coerce ui/flex $ :: 'Map 'Tag 'Dynamic
-                          comp-previewer (>> states :previewer) (&map:get router-data :article) (&map:get router-data :focuses) (&map:get router-data :members) paragraph-id
+                          comp-previewer (>> states :previewer) (&map:get article-data :article) (&map:get article-data :focuses) (&map:get article-data :members) paragraph-id
                       comp-login $ >> states :login
                   let
                       visible? $ and (:logged-in? navigation-view) (non-nil? paragraph-id)
                         = :article $ &map:get router :name
                     comp-editor-panel (>> states :editor) paragraph-id
                       option:unwrap-or
-                        get-in router-data $ [] :article :paragraphs paragraph-id
+                        get-in article-data $ [] :article :paragraphs paragraph-id
                         {}
                       , visible?
                   comp-messages
@@ -791,7 +795,7 @@
                   let
                       event $ unsafe-coerce
                         option:unwrap-or (get e :event) (js-object)
-                        , DragEventHost
+                        , 'app.ffi.drag/DragEventHost
                       data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
                     .set-data! data-transfer |text $ str sort-id
                   , &unit
@@ -1142,6 +1146,14 @@
             respo.comp.space :refer $ =<
     'app.comp.previewer $ %{} 'FileEntry
       :defs $ {}
+        'ParagraphDropProps $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct ParagraphDropProps
+            :style $ :: 'Map 'Tag 'Dynamic
+            :on-drop 'respo.schema/EventHandler
+            :on-dragover 'respo.schema/EventHandler
+            :on-dragenter 'respo.schema/EventHandler
+          :examples $ []
+          :schema $ :: 'StructDef
         'comp-info-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-info-list (focus-list)
             let
@@ -1173,67 +1185,98 @@
                 state $ or (&map:get states-map :data)
                   {} (:text |) (:time 0)
               div
-                unsafe-coerce
-                  {}
-                    :style $ merge
-                      unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
-                      unsafe-coerce
-                        {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
-                          :border $ str "|1px solid " $ hsl 0 0 90
-                        :: 'Map 'Tag 'Dynamic
-                    :on-drop $ fn (e d!)
+                ParagraphDropProps :style
+                  merge
+                    unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
+                    unsafe-coerce
+                      {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
+                        :border $ str "|1px solid " $ hsl 0 0 90
+                      :: 'Map 'Tag 'Dynamic
+                  , :on-drop
+                    fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :rest 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
                       let
                           event $ unsafe-coerce
                             option:unwrap-or (get e :event) (js-object)
-                            , DragEventHost
+                            , 'app.ffi.drag/DragEventHost
                           data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
                           data $ data-transfer .get-data |text
                         event .stop-propagation!
                         if (not= sort-id data)
                           d! $ :: :paragraph/move $ {} (:target data) (:base sort-id)
-                    :on-dragover $ fn (e d!)
-                      let
-                          event $ unsafe-coerce
-                            option:unwrap-or (get e :event) (js-object)
-                            , DragEventHost
-                        event .prevent-default!
-                    :on-dragenter $ fn (e d!)
-                      let
-                          event $ unsafe-coerce
-                            option:unwrap-or (get e :event) (js-object)
-                            , DragEventHost
-                        event .prevent-default!
-                  , respo.schema/DomProps
-                comp-md-block paragraph-text $ {} (:class-name |preview-content)
-                  :style $ {} $ :padding "|0 16px"
-                  :highlight $ fn (code lang)
-                    if (contains? supprted-langs lang)
-                      let
-                          highlighter $ unsafe-coerce hljs HighlightHost
-                          result $ highlighter .highlight
-                            option:unwrap-or
-                              get supprted-langs $ assert-type lang 'String
-                              , |
-                            , code
-                        result :value
-                      escape-html code
-                div
-                  unsafe-coerce
-                    {}
-                      :style $ merge
-                        unsafe-coerce ui/row-parted $ :: 'Map 'Tag 'Dynamic
-                        unsafe-coerce
-                          {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
-                          :: 'Map 'Tag 'Dynamic
-                      :draggable true
-                      :on-dragstart $ fn (e d!)
+                      , &unit
+                    , :on-dragover
+                      fn (e d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {}
+                              :args $ [] 'Dynamic
+                              :rest 'Dynamic
+                              :return 'Unit
+                          :return 'Unit
                         let
                             event $ unsafe-coerce
                               option:unwrap-or (get e :event) (js-object)
-                              , DragEventHost
-                            data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
-                          data-transfer .set-data! |text $ str sort-id
-                    , respo.schema/DomProps
+                              , 'app.ffi.drag/DragEventHost
+                          event .prevent-default!
+                        , &unit
+                      , :on-dragenter $ fn (e d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {}
+                              :args $ [] 'Dynamic
+                              :rest 'Dynamic
+                              :return 'Unit
+                          :return 'Unit
+                        let
+                            event $ unsafe-coerce
+                              option:unwrap-or (get e :event) (js-object)
+                              , 'app.ffi.drag/DragEventHost
+                          event .prevent-default!
+                        , &unit
+                comp-md-block paragraph-text $ {} (:class-name |preview-content)
+                  :style $ {} $ :padding "|0 16px"
+                  :highlight $ fn (code lang)
+                    let
+                        code-text $ decode-map-as code 'String
+                      if (contains? supprted-langs lang)
+                        let
+                            highlighter $ unsafe-coerce hljs 'app.ffi.highlight/HighlightHost
+                            result $ highlighter .highlight
+                              option:unwrap-or
+                                get supprted-langs $ assert-type lang 'String
+                                , |
+                              , code-text
+                          result :value
+                        escape-html code-text
+                div
+                  ToolbarDragProps :style
+                    merge
+                      unsafe-coerce ui/row-parted $ :: 'Map 'Tag 'Dynamic
+                      unsafe-coerce
+                        {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
+                        :: 'Map 'Tag 'Dynamic
+                    , :draggable true :on-dragstart $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :rest 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
+                      let
+                          event $ unsafe-coerce
+                            option:unwrap-or (get e :event) (js-object)
+                            , 'app.ffi.drag/DragEventHost
+                          data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
+                        data-transfer .set-data! |text $ str sort-id
+                      , &unit
                   comp-info-list focus-list
                   div
                     {} $ :style ui/row
@@ -1353,7 +1396,7 @@
                               &map:get paragraph-map :content
                           .join-string $ str &newline &newline |---- &newline &newline
                         html $ str |<pre> (escape-html content) |</pre>
-                        document $ unsafe-coerce (child :document) DocumentWriterHost
+                        document $ unsafe-coerce (child :document) 'app.ffi.popup/DocumentWriterHost
                       document .write! html
                 <> |Text
           :examples $ []
@@ -1448,53 +1491,83 @@
             app.ffi.popup :refer $ DocumentWriterHost
             js-ffi.browser :refer $ window-open
             app.comp.articles :refer $ read-article-title read-focus-name
+            app.comp.editor-toolbar :refer $ ToolbarDragProps
     'app.comp.profile $ %{} 'FileEntry
-      :defs $ {} $ 'comp-profile
-        %{} 'CodeEntry (:doc |)
+      :defs $ {}
+        'comp-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-profile (user members)
             let
-                user-map $ unsafe-coerce user 'Map
-                members-map $ unsafe-coerce members 'Map
-              div $ {} $ :style
-                merge ui/flex $ {} $ :padding 16
+                user-map $ decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                members-map $ read-profile-members members
               div
-                {} $ :style $ {} (:font-family ui/font-fancy) (:font-size 32) (:font-weight 100)
-                <> $ str "|Hello! " $ &map:get user-map :name
-              =< nil 16
-              div
-                {} $ :style ui/row
-                <> |Members:
-                =< 8 nil
-                list->
+                {} $ :style $ merge ui/flex
+                  {} $ :padding 16
+                div
+                  {} $ :style $ {} (:font-family ui/font-fancy) (:font-size 32) (:font-weight 100)
+                  <> $ str "|Hello! " $ &map:get user-map :name
+                =< nil 16
+                div
                   {} $ :style ui/row
-                  -> members-map (.to-list)
-                    .map-pair $ fn (k username)
-                      [] k $ div
-                        {} $ :style $ {} (:padding "|0 8px")
-                          :border $ str "|1px solid " $ hsl 0 0 80
-                          :border-radius |16px
-                          :margin "|0 4px"
-                        <> username
-              =< nil 48
-              div ({})
-                button
-                  {}
-                    :style $ merge ui/button
-                    :on-click $ fn (e d!)
-                      js/location.replace $ str js/location.origin |?time= $ .now js/Date
-                  <> |Refresh
-                =< 8 nil
-                button
-                  {}
-                    :style $ merge ui/button $ {} (:color :red) (:border-color :red)
-                    :on-click $ fn (e dispatch!)
-                      dispatch! $ :: :user/log-out nil
-                      storage-remove! $ :storage-key config/site
-                  <> "|Log out"
+                  <> |Members:
+                  =< 8 nil
+                  list->
+                    {} $ :style ui/row
+                    -> members-map (.to-list)
+                      .map-pair $ fn (k username)
+                        [] k $ div
+                          {} $ :style $ {} (:padding "|0 8px")
+                            :border $ str "|1px solid " $ hsl 0 0 80
+                            :border-radius |16px
+                            :margin "|0 4px"
+                          if (nil? username)
+                            span $ {}
+                            <> $ decode-map-as username 'String
+                =< nil 48
+                div ({})
+                  button
+                    {}
+                      :style $ merge ui/button
+                      :on-click $ fn (e d!)
+                        js/location.replace $ str js/location.origin |?time= $ .now js/Date
+                    <> |Refresh
+                  =< 8 nil
+                  button
+                    {}
+                      :style $ merge ui/button $ {} (:color :red) (:border-color :red)
+                      :on-click $ fn (e dispatch!)
+                        dispatch! $ :: :user/log-out nil
+                        storage-remove! $ :storage-key config/site
+                    <> "|Log out"
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
             :args $ [] 'Dynamic 'Dynamic
             :features $ #{} :js-ffi
+        'read-profile-members $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-profile-members (value)
+            decode-map-as value $ :: 'Map 'Number 'Dynamic
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Number 'Dynamic
+          :tests $ []
+            %{} 'TestEntry
+              :name |numeric-session-keys-preserve-string-and-absent-names
+              :code $ quote $ let
+                  value $ {} (7 "|成员🌱") (0 nil)
+                assert= value $ read-profile-members value
+              :tags $ #{} :projection :unit
+            %{} 'TestEntry (:name |rejects-string-session-key-without-coercion)
+              :code $ quote $ assert= true
+                try
+                  do
+                    read-profile-members $ {} $ |7 "|成员"
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+              :tags $ #{} :projection :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.profile
           :require
@@ -2249,6 +2322,56 @@
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :tests $ []
+            %{} 'TestEntry
+              :name |removes-only-selected-paragraph-and-clears-numeric-session-cursor
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {} $ 7
+                      {} (:article-id |a) (:paragraph-id |T)
+                    :articles $ {} $ |a
+                      {} $ :paragraphs $ {}
+                        |T $ {} $ :content "|删除对象"
+                        |g $ {} $ :content "|保留对象🌱"
+                  next-db $ remove-one db |T 7 |operation-id 42
+                assert= nil $ &map:get
+                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  , :paragraph-id
+                assert=
+                  option:unwrap $ get-in db $ [] :articles |a :paragraphs |g
+                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs |g
+                assert= |T $ option:unwrap $ get-in db ([] :sessions 7 :paragraph-id)
+                assert= (Option :none)
+                  get-in next-db $ [] :articles |a :paragraphs |T
+                assert= true $ contains?
+                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  , :paragraph-id
+              :tags $ #{} :business :unit
+            %{} 'TestEntry
+              :name |missing-paragraph-keeps-content-and-clears-cursor
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {} $ 7
+                      {} (:article-id |a) (:paragraph-id |T)
+                    :articles $ {} $ |a
+                      {} $ :paragraphs $ {}
+                        |T $ {} $ :content "|删除对象"
+                        |g $ {} $ :content "|保留对象🌱"
+                  next-db $ remove-one db |absent 7 |operation-id 42
+                assert= nil $ &map:get
+                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  , :paragraph-id
+                assert=
+                  option:unwrap $ get-in db $ [] :articles |a :paragraphs |g
+                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs |g
+                assert= |T $ option:unwrap $ get-in db ([] :sessions 7 :paragraph-id)
+                assert=
+                  option:unwrap $ get-in db $ [] :articles |a :paragraphs
+                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs
+                assert= true $ contains?
+                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  , :paragraph-id
+              :tags $ #{} :business :unit
         'update-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn update-content (db op-data sid op-id op-time)
             let
@@ -2398,15 +2521,18 @@
       :defs $ {}
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
-            js/setTimeout
-              fn () $ let
-                  el $ query-selector target
-                if (el .some?)
-                  .focus! $ option:unwrap el
-                  .warn js/console "|focus target box not ready."
+            set-timeout!
+              fn ()
+                let
+                    el $ query-selector target
+                  if (el .some?)
+                    .focus! $ option:unwrap el
+                    js/console.warn "|focus target box not ready."
+                , &unit
               , duration
+            , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+          :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ [] 'Number 'String
             :features $ #{} :js-ffi
         'filter-kv $ %{} 'CodeEntry (:doc |)
@@ -2422,4 +2548,4 @@
             :return $ :: 'Map 'K 'V
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.util
-          :require $ js-ffi.browser :refer $ query-selector
+          :require $ js-ffi.browser :refer $ query-selector set-timeout!

@@ -38,7 +38,9 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 `:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
 
 定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、28 项 native / 生成 JS 共享回放及前端构建通过。
+当前候选双入口严格检查、32 项 native / 生成 JS 共享回放及前端构建通过。
+路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
+不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
 
 ## 部署
 
@@ -57,6 +59,7 @@ PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL
 - UI state 和投影 Map 的开放字段仍需在具体使用处验证，未宣称已全部静态化。
 - 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
 - 旧质量基线仍报告回归，文件和预算保持不变，不能把它记录为通过。
+- 已发布 Markdown 0.4.51 的自定义高亮回调尚未恢复调用，暂不视为高亮能力验收通过。
 
 ## License
 
