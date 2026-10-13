@@ -1,28 +1,45 @@
+# Table Two
 
-Table Two
-------
+两人实时协作编辑 Markdown 表格的应用，基于 Calcium Workflow。
 
-http://repo.topix.im/tabletwo/
+- 应用页面：http://repo.topix.im/tabletwo/
+- 框架：https://github.com/Cumulo/calcium-workflow
 
-The existing web entry and the separate `/servers/tabletwo/` rsync deployment
-remain in place. COS migration applies only to the frontend `dist/` assets:
-GitHub Actions builds them against `https://cos-sh.tiye.me/TopixIM/tabletwo/`
-(`.../pr/<number>/<run>/<attempt>/` on pull requests), uploads them, and verifies their public URLs.
+## 开发与构建
 
-前端使用 COS Action v1.2.0 的 `public-base-url` 内置校验，不添加重复验证脚本。
-PR 资源隔离到独立运行目录，上传按事件及分支排队；job/上传分别限制为 15/10 分钟。
-保留现有 Yarn 4.12.0 锁文件；Calcit 从 deps.cirru 读取版本，现有 client/server 门禁保留。
-本轮保留 Calcit/procs 0.27.0，不代表已完成 0.28 类型迁移。生产 CDN 前缀与
-`/servers/tabletwo/` 服务端部署路径不变。
-移除误跟踪的过时 `dist-server/package.json`；它仍由原构建步骤从根 manifest 生成，
-不会改变服务端打包或部署内容。`dist-server/` 原本已被 gitignore 忽略。
+候选迁移使用正式 Calcit / `@calcit/procs` 0.29.3、Node.js 24 和 Yarn 4.18.0。
+`deps.cirru` 记录精确模块版本。先安装匹配的 CLI，再运行：
 
-> We need a table for two people. They sit in front of each other, seeing into the eyes, and to compose the same markdown file togather.
+```sh
+caps --ci
+yarn install --immutable
+caps verify --toolchain
+calcit calcit.cirru --check-only
+calcit calcit.cirru --entry server --check-only
+calcit calcit.cirru js
+yarn release-page
+```
 
-### Workflow
+前端以单个 Enum 派发操作，服务端保留原 `op` / `data` envelope。
+投影保留 Map 与 Cirru EDN 传输格式；客户端保存
+`Ref<Option<Map<Tag, Dynamic>>>`，离线时为 None，连接后为 Some。
+升级已运行的页面时完整刷新，避免热重载保留旧状态和 watcher。
 
-https://github.com/Cumulo/calcium-workflow
+## 部署
 
-### License
+COS 只接收前端 `dist/` 资产。生产前缀为 `TopixIM/tabletwo/`；
+PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL 校验。
+上传按事件和分支排队，job / 上传分别限制为 15 / 10 分钟。
+原网页入口与 `/servers/tabletwo/` rsync 服务端部署路径保持不变。
+`dist-server/` 由构建生成，不提交产物。
+
+## 限制
+
+- 0.29.3 候选的完整严格检查、业务回归和浏览器验收尚未完成。
+- 旧 0.28 分支的隔离回放不能证明此候选或完整 UI 已通过。
+- UI state 和投影 Map 的开放字段仍需在具体使用处验证，未宣称已全部静态化。
+- 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
+
+## License
 
 MIT
