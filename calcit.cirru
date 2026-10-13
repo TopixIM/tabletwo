@@ -324,16 +324,22 @@
             [] feather.core :refer $ [] comp-icon comp-i
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
+        'NavigationView $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct NavigationView (:logged-in? 'Bool)
+            :count $ :: 'Option 'Number
+          :examples $ []
+          :schema $ :: 'StructDef
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (states store)
-            let
-                states-map $ unsafe-coerce states 'Map
-                store-map $ unsafe-coerce store 'Map
-                session $ unsafe-coerce (&map:get store-map :session) 'Map
-                paragraph-id $ &map:get session :paragraph-id
-                router $ unsafe-coerce (&map:get store-map :router) 'Map
-                router-data $ unsafe-coerce (&map:get router :data) 'Map
-              if (nil? store) (comp-offline)
+            if (nil? store) (comp-offline)
+              let
+                  states-map $ unsafe-coerce states 'Map
+                  store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                  navigation-view $ read-navigation-view store-map
+                  session $ decode-map-as (&map:get store-map :session) (:: 'Map 'Tag 'Dynamic)
+                  paragraph-id $ &map:get session :paragraph-id
+                  router $ unsafe-coerce (&map:get store-map :router) 'Map
+                  router-data $ unsafe-coerce (&map:get router :data) 'Map
                 div
                   {} $ :style $ merge
                     unsafe-coerce ui/global $ :: 'Map 'Tag 'Dynamic
@@ -343,8 +349,8 @@
                     {} $ :style $ merge
                       unsafe-coerce ui/expand $ :: 'Map 'Tag 'Dynamic
                       unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
-                    comp-navigation (&map:get store-map :logged-in?) (&map:get store-map :count)
-                    if (&map:get store-map :logged-in?)
+                    comp-navigation (:logged-in? navigation-view) (:count navigation-view)
+                    if (:logged-in? navigation-view)
                       case-default (&map:get router :name)
                         div
                           {} $ :style ui/flex
@@ -358,7 +364,7 @@
                           comp-previewer (>> states :previewer) (&map:get router-data :article) (&map:get router-data :focuses) (&map:get router-data :members) paragraph-id
                       comp-login $ >> states :login
                   let
-                      visible? $ and (&map:get store-map :logged-in?) (some? paragraph-id)
+                      visible? $ and (:logged-in? navigation-view) (some? paragraph-id)
                         = :article $ &map:get router :name
                     comp-editor-panel (>> states :editor) paragraph-id
                       option:unwrap-or
@@ -402,6 +408,74 @@
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
             :args $ [] 'String
+        'read-navigation-view $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-navigation-view (store)
+            let
+                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                raw-count $ &map:get store-map :count
+              NavigationView :logged-in?
+                decode-map-as (&map:get store-map :logged-in?) 'Bool
+                , :count $ if (nil? raw-count) (Option :none)
+                  Option :some $ decode-map-as raw-count 'Number
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.comp.container/NavigationView)
+            :args $ [] 'Dynamic
+          :tests $ []
+            %{} 'TestEntry (:name |guest-count-is-absent-not-zero)
+              :code $ quote $ let
+                  view $ read-navigation-view $ {} (:logged-in? false)
+                assert= false $ :logged-in? view
+                assert= (Option :none) (:count view)
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |present-zero-count)
+              :code $ quote $ let
+                  view $ read-navigation-view $ {} (:logged-in? true) (:count 0)
+                assert= true $ :logged-in? view
+                assert= (Option :some 0) (:count view)
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |navigation-view-keeps-source-extra-fields)
+              :code $ quote $ let
+                  store $ {} (:logged-in? false) (:count 2) (:payload |preserved)
+                  view $ read-navigation-view store
+                assert= false $ :logged-in? view
+                assert= (Option :some 2) (:count view)
+                assert= |preserved $ &map:get store :payload
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |rejects-untyped-navigation-values)
+              :code $ quote $ do
+                assert= true $ try
+                  do
+                    read-navigation-view $ {} $ :logged-in? |not-a-bool
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+                assert= true $ try
+                  do
+                    read-navigation-view $ {} (:logged-in? false) (:count |not-a-number)
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+                assert= true $ try
+                  do
+                    read-navigation-view $ {}
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |explicit-nil-count-is-absent)
+              :code $ quote $ let
+                  view $ read-navigation-view $ {} (:logged-in? false) (:count nil)
+                assert= (Option :none) (:count view)
+              :tags $ #{} :navigation-view :unit
         'style-body $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-body
             {} $ :padding "|8px 16px"
@@ -665,6 +739,12 @@
             [] app.config :as config
     'app.comp.navigation $ %{} 'FileEntry
       :defs $ {}
+        'NavigationProps $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct NavigationProps
+            :style $ :: 'Map 'Tag 'Dynamic
+            :on-click 'respo.schema/EventHandler
+          :examples $ []
+          :schema $ :: 'StructDef
         'comp-navigation $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-navigation (logged-in? members-count)
             div
@@ -675,8 +755,8 @@
               div
                 {} $ :style ui/column
                 div
-                  %{} respo.schema/DomProps
-                    :on-click $ fn (e d!)
+                  NavigationProps :on-click
+                    fn (e d!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
                           :: 'Fn $ {}
@@ -685,14 +765,14 @@
                         :return 'Unit
                       d! $ :: :router/change $ {} (:name :home)
                       , &unit
-                    :style style-entry
+                    , :style style-entry
                   <> |Table $ {} $ :font-size 14
-                  <> (str members-count)
+                  <> (navigation-count-text members-count)
                     {} $ :font-size 20
               div
-                %{} respo.schema/DomProps
-                  :style $ {} $ :cursor |pointer
-                  :on-click $ fn (e d!)
+                NavigationProps :style
+                  {} $ :cursor |pointer
+                  , :on-click $ fn (e d!)
                     hint-fn $ {}
                       :args $ [] (:: 'Map 'Tag 'Dynamic)
                         :: 'Fn $ {}
@@ -704,7 +784,22 @@
                 <> $ if logged-in? |Me |Guest
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Bool 'Number
+            :args $ [] 'Bool $ :: 'Option 'Number
+        'navigation-count-text $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn navigation-count-text (members-count)
+            match members-count
+              (:some value) (str value)
+              (:none) (str nil)
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'String)
+            :args $ [] $ :: 'Option 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |missing-and-zero-count-display)
+            :code $ quote $ do
+              assert= (str nil)
+                navigation-count-text $ Option :none
+              assert= |0 $ navigation-count-text $ Option :some 0
+              assert= |2 $ navigation-count-text $ Option :some 2
+            :tags $ #{} :navigation-view :unit
         'style-entry $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-entry
             {} (:cursor :pointer) (:padding "|8px 0")

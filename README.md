@@ -25,6 +25,12 @@ yarn release-page
 `Ref<Option<Map<Tag, Dynamic>>>`，离线时为 None，连接后为 Some。
 升级已运行的页面时完整刷新，避免热重载保留旧状态和 watcher。
 
+导航在投影 Map 的使用边界验证 `logged-in?` 为 Bool，成员计数为
+`Option<Number>`：缺失与 nil 保留原来的空值显示，0 仍显示为 0。
+导航 props 使用只声明 style 与 EventHandler 的具名 `NavigationProps`，
+通过 Respo 原有 record props 接口渲染，不改变投影或消息的 EDN 格式。
+离线分支先判断 store，再读取在线 session。
+
 ## 部署
 
 COS 只接收前端 `dist/` 资产。生产前缀为 `TopixIM/tabletwo/`；
