@@ -56,6 +56,7 @@ jobs:
         git diff --exit-code -- calcit.cirru
         calcit calcit.cirru --check-only --warn-dyn-method
         calcit calcit.cirru --entry server --check-only --warn-dyn-method
+        calcit calcit.cirru test --require-match --summary-only
 
     - name: Select CDN asset path
       id: asset-path
@@ -79,9 +80,7 @@ jobs:
         set -euo pipefail
         calcit calcit.cirru js
         yarn vite build --base="$VITE_BASE_URL"
-        calcit calcit.cirru --entry server ir
         mkdir -p dist-server
-        cp js-out/program-ir.cirru dist-server/compact.cirru
         cp calcit.cirru deps.cirru package.json dist-server/
 
     - name: Check COS credentials
