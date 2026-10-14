@@ -38,13 +38,18 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 `:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
 
 定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、32 项 native / 生成 JS 共享回放及前端构建通过。
+当前候选双入口严格检查、42 项 native / 生成 JS 共享回放及前端构建通过。
 路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
 不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
 
 验收以双入口严格类型检查、定义内 `:tests`、native / 生成 JS 共享语义测试和
 真实业务回放为准。已删除 CI 不再使用的 Dynamic / unsafe 数量基线；
-这不放宽类型合同，也不以增加预算代替验证。浏览器高亮等未完成项仍须单独验收。
+这不放宽类型合同，也不以增加预算代替验证。
+
+登录凭据在服务端解码为具名结构；客户端通过 Recollect 已发布的 codec 还原
+Cirru EDN patch，避免将传输中的 enum 直接当作已校验的名义值。
+Markdown 使用正式 0.4.53，高亮回调的输入与输出均有 String 合同。
+隔离浏览器已验证实际代码高亮、Number session key 和刷新后自动登录。
 
 ## 部署
 
@@ -62,7 +67,8 @@ PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL
 - 旧 0.28 分支的隔离回放不能证明此候选或完整 UI 已通过。
 - UI state 和投影 Map 的开放字段仍需在具体使用处验证，未宣称已全部静态化。
 - 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
-- 已发布 Markdown 0.4.51 的自定义高亮回调尚未恢复调用，暂不视为高亮能力验收通过。
+- Highlight.js 仍使用原有 legacy 调用方式，保留其弃用提示，未宣称已迁移该接口。
+- 完整 `fix --workflow strict --verify` 被 core `update-in` 的回调泛型输入证明阻断；双入口检查通过不等同完整收尾。
 
 ## License
 
