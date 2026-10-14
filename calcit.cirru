@@ -1142,6 +1142,59 @@
             :on-dragenter 'respo.schema/EventHandler
           :examples $ []
           :schema $ :: 'StructDef
+        'article-text $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn article-text (article)
+            let
+                title $ read-article-title article
+                paragraphs $ decode-map-as (&map:get article :paragraphs)
+                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                entries $ map-entries paragraphs
+                contents $ -> entries
+                  .sort-by $ fn (entry) (:key entry)
+                  .map $ fn (entry)
+                    read-paragraph-content $ :value entry
+              str &newline "|# " title &newline &newline |---- &newline &newline $ .join-string contents $ str &newline &newline |---- &newline &newline
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'String)
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :tests $ []
+            %{} 'TestEntry (:name |export-orders-keys-and-preserves-unicode)
+              :code $ quote $ let
+                  article $ {} (:title "|协作🐈")
+                    :paragraphs $ {}
+                      |b $ {} $ :content "|第二段"
+                      |a $ {} $ :content |<first>
+                  expected $ str &newline "|# 协作🐈" &newline &newline |---- &newline &newline |<first> &newline &newline |---- &newline &newline "|第二段"
+                assert= expected $ article-text article
+              :tags $ #{} :export :unit
+            %{} 'TestEntry (:name |export-empty-paragraphs-preserves-header)
+              :code $ quote $ let
+                  article $ {} (:title |)
+                    :paragraphs $ {}
+                assert= (str &newline "|# " &newline &newline |---- &newline &newline) (article-text article)
+              :tags $ #{} :export :unit
+            %{} 'TestEntry (:name |export-rejects-invalid-wire-fields)
+              :code $ quote $ let
+                  rejected? $ fn (article)
+                    hint-fn $ {}
+                      :args $ [] $ :: 'Map 'Tag 'Dynamic
+                      :return 'Bool
+                    try
+                      do (article-text article) false
+                      fn (message)
+                        hint-fn $ {}
+                          :args $ [] 'String
+                          :return 'Bool
+                        , true
+                assert= true $ rejected? $ {} (:title 42)
+                  :paragraphs $ {}
+                assert= true $ rejected? $ {} (:title |Title)
+                  :paragraphs $ {} $ 1
+                    {} $ :content |body
+                assert= true $ rejected? $ {} (:title |Title)
+                  :paragraphs $ {} $ |a
+                    {} $ :content 42
+              :tags $ #{} :export :unit
         'comp-info-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-info-list (focus-list)
             let
@@ -1354,14 +1407,7 @@
                   :on-click $ fn (e d!)
                     let
                         child $ option:unwrap $ window-open |
-                        paragraphs $ decode-map-as (&map:get article-map :paragraphs)
-                          :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-                        content $ str &newline "|# " (&map:get article-map :title) &newline &newline |---- &newline &newline $ -> paragraphs (.to-list) (.sort-by first)
-                          map $ fn (pair)
-                            let
-                                paragraph-map $ decode-map-as (last pair) (:: 'Map 'Tag 'Dynamic)
-                              &map:get paragraph-map :content
-                          .join-string $ str &newline &newline |---- &newline &newline
+                        content $ article-text article-map
                         html $ str |<pre> (escape-html content) |</pre>
                         document $ unsafe-coerce (child :document) 'app.ffi.popup/DocumentWriterHost
                       document .write! html

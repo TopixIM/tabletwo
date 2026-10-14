@@ -40,7 +40,7 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 `:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
 
 定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、47 项 native / 生成 JS 共享回放及前端构建通过。
+当前候选双入口严格检查、50 项 native / 生成 JS 共享回放及前端构建通过。
 路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
 不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
 
@@ -64,11 +64,16 @@ String 键消息集合；session key 保持 Number。定义测试覆盖仅删除
 服务端在读取消息字段前验证解析结果为 `Map<Tag, Dynamic>`，进入 dispatch 前
 校验操作名为 Tag；传输格式仍是原 Cirru EDN Map，未知 kind 的日志行为不变。
 定时渲染回调明确返回 Unit，包括 Reel 未变化、不需要同步客户端的分支。
-两项 `server-effect` 测试使用发布版 CLI 验证返回值和进程内状态；共同语义测试仍为 47 项。
+两项 `server-effect` 测试使用发布版 CLI 验证返回值和进程内状态；共同语义测试为 50 项。
 
-已发布的 alpha.3 配对工具链通过完整 strict workflow，47 项共同测试在 native / JS
+已发布的 alpha.3 配对工具链通过完整 strict workflow，50 项共同测试在 native / JS
 各通过一次，另有两项 native server-effect 测试；前端生成和 Vite 构建通过。
 这些检查不修改应用源码、选择新的业务默认值或放宽类型。
+
+Text 导出使用保留 key/value 类型的 MapEntry，按段落 key 排序并验证文本字段，
+保留标题、分隔符、Unicode 和 HTML 转义。定义测试验证正常导出、空集合和非法字段拒绝。
+隔离浏览器已验证当前版本的双客户端编辑、追加、拖放顺序同步、高亮、自动登录、
+持久化重启与退出；Text 点击不再出现 Option 被当作 Map 的解码错误。
 
 ## 部署
 
