@@ -16,7 +16,8 @@ yarn install --immutable
 caps verify --toolchain
 calcit calcit.cirru --check-only
 calcit calcit.cirru --entry server --check-only
-calcit calcit.cirru test --require-match --summary-only
+calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
+calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 calcit calcit.cirru js
 yarn release-page
 ```
@@ -56,6 +57,9 @@ String 键消息集合；session key 保持 Number。定义测试覆盖仅删除
 其他 session 和字段保持不变、目标缺失及非法 payload 拒绝。
 根 updater 在返回协议边界验证 `Map<Tag, Dynamic>`，保留原操作分派和未知操作
 返回原状态的行为；测试覆盖连接、断开及 Number session key。
+服务端 `dispatch!` 完成持久化或 Reel 更新后明确返回 Unit，不把 `reset!` 的
+赋值结果当作 Unit。另有一项 `server-effect` 定义测试在 native server entry 下
+验证 Unit 返回、数据库保持和原记录行为，并恢复进程内 Reel；不执行持久化分支。
 
 ## 部署
 

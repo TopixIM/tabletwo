@@ -56,7 +56,8 @@ jobs:
         git diff --exit-code -- calcit.cirru
         calcit calcit.cirru --check-only --warn-dyn-method
         calcit calcit.cirru --entry server --check-only --warn-dyn-method
-        calcit calcit.cirru test --require-match --summary-only
+        calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
+        calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 
     - name: Select CDN asset path
       id: asset-path

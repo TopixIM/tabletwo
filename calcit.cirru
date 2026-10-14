@@ -1807,9 +1807,24 @@
               if config/dev? $ println |Dispatch! (str op) op-data sid
               if (= op :effect/persist) (persist-db!)
                 reset! *reel $ reel-reducer @*reel updater (:: op op-data) sid op-id op-time config/dev?
+              , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ [] 'Tag 'Dynamic 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |unit-result-preserves-state-transition)
+            :code $ quote $ let
+                reel-before @*reel
+                dispatch-result $ dispatch! :unknown nil 42
+                reel-after @*reel
+              reset! *reel reel-before
+              assert= &unit dispatch-result
+              assert= (:db reel-before) (:db reel-after)
+              assert=
+                if config/dev?
+                  inc $ count $ :records reel-before
+                  count $ :records reel-before
+                count $ :records reel-after
+            :tags $ #{} :server-effect :unit
         'get-backup-path! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn get-backup-path! ()
             let
