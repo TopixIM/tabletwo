@@ -2208,30 +2208,55 @@
       :defs $ {} $ 'updater
         %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (db op sid op-id op-time)
-            match op
-              (:session/connect op-data) (session/connect db op-data sid op-id op-time)
-              (:session/disconnect op-data) (session/disconnect db op-data sid op-id op-time)
-              (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
-              (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
-              (:user/sign-up op-data) (user/sign-up db op-data sid op-id op-time)
-              (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
-              (:session/view-article op-data) (session/view-article db op-data sid op-id op-time)
-              (:router/change op-data) (router/change db op-data sid op-id op-time)
-              (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
-              (:paragraph/append-to op-data) (paragraph/append-to db op-data sid op-id op-time)
-              (:paragraph/content op-data) (paragraph/update-content db op-data sid op-id op-time)
-              (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
-              (:paragraph/move op-data) (paragraph/move db op-data sid op-id op-time)
-              (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
-              (:paragraph/finish-editing op-data) (paragraph/finish-editing db op-data sid op-id op-time)
-              (:article/create op-data) (article/create db op-data sid op-id op-time)
-              (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
-              (:article/title op-data) (article/change-title db op-data sid op-id op-time)
-              _ $ do (println "|Unknown op:" op) db
+            decode-map-as
+              match op
+                (:session/connect op-data) (session/connect db op-data sid op-id op-time)
+                (:session/disconnect op-data) (session/disconnect db op-data sid op-id op-time)
+                (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
+                (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
+                (:user/sign-up op-data) (user/sign-up db op-data sid op-id op-time)
+                (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
+                (:session/view-article op-data) (session/view-article db op-data sid op-id op-time)
+                (:router/change op-data) (router/change db op-data sid op-id op-time)
+                (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
+                (:paragraph/append-to op-data) (paragraph/append-to db op-data sid op-id op-time)
+                (:paragraph/content op-data) (paragraph/update-content db op-data sid op-id op-time)
+                (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
+                (:paragraph/move op-data) (paragraph/move db op-data sid op-id op-time)
+                (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
+                (:paragraph/finish-editing op-data) (paragraph/finish-editing db op-data sid op-id op-time)
+                (:article/create op-data) (article/create db op-data sid op-id op-time)
+                (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
+                (:article/title op-data) (article/change-title db op-data sid op-id op-time)
+                _ $ do (println "|Unknown op:" op) db
+              :: 'Map 'Tag 'Dynamic
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ [] (:: 'Map 'Tag 'Dynamic) 'Enum 'Number 'String 'Number
             :return $ :: 'Map 'Tag 'Dynamic
+          :tests $ []
+            %{} 'TestEntry
+              :name |session-operation-preserves-root-and-numeric-key
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {}
+                    :users $ {} $ |u-1
+                      {} $ :name |Ada
+                  connected $ updater db (:: :session/connect nil) 42 |op-1 1
+                  sessions $ decode-map-as (&map:get connected :sessions) (:: 'Map 'Number 'Dynamic)
+                  session-value $ decode-map-as (&map:get sessions 42) (:: 'Map 'Tag 'Dynamic)
+                assert= 42 $ &map:get session-value :id
+                assert= (&map:get db :users) (&map:get connected :users)
+                assert= db $ updater connected (:: :session/disconnect nil) 42 |op-2 2
+              :tags $ #{} :unit :updater
+            %{} 'TestEntry (:name |unknown-operation-preserves-root-map)
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {} $ 42
+                      {} $ :id 42
+                    :users $ {}
+                assert= db $ updater db (:: :unknown nil) 42 |op 1
+              :tags $ #{} :unit :updater
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article)

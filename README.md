@@ -38,7 +38,7 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 `:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
 
 定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、45 项 native / 生成 JS 共享回放及前端构建通过。
+当前候选双入口严格检查、47 项 native / 生成 JS 共享回放及前端构建通过。
 路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
 不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
 
@@ -54,6 +54,8 @@ Markdown 使用正式 0.4.53，高亮回调的输入与输出均有 String 合�
 删除 session 消息时在使用边界验证 Tag 键 payload、String 消息 ID 和
 String 键消息集合；session key 保持 Number。定义测试覆盖仅删除目标消息、
 其他 session 和字段保持不变、目标缺失及非法 payload 拒绝。
+根 updater 在返回协议边界验证 `Map<Tag, Dynamic>`，保留原操作分派和未知操作
+返回原状态的行为；测试覆盖连接、断开及 Number session key。
 
 ## 部署
 
