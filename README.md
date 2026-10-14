@@ -60,6 +60,8 @@ String 键消息集合；session key 保持 Number。定义测试覆盖仅删除
 服务端 `dispatch!` 完成持久化或 Reel 更新后明确返回 Unit，不把 `reset!` 的
 赋值结果当作 Unit。另有一项 `server-effect` 定义测试在 native server entry 下
 验证 Unit 返回、数据库保持和原记录行为，并恢复进程内 Reel；不执行持久化分支。
+服务端在读取消息字段前验证解析结果为 `Map<Tag, Dynamic>`，进入 dispatch 前
+校验操作名为 Tag；传输格式仍是原 Cirru EDN Map，未知 kind 的日志行为不变。
 
 ## 部署
 

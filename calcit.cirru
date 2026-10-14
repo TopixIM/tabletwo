@@ -1910,9 +1910,12 @@
                     do (dispatch! :session/connect nil sid) (println "|New client.")
                   (:message sid msg)
                     let
-                        action $ parse-cirru-edn msg
+                        action $ decode-map-as (parse-cirru-edn msg) (:: 'Map 'Tag 'Dynamic)
                       case-default (&map:get action :kind) (println "|unknown action:" action)
-                        :op $ dispatch! (&map:get action :op) (&map:get action :data) sid
+                        :op $ dispatch!
+                          decode-map-as (&map:get action :op) 'Tag
+                          &map:get action :data
+                          , sid
                   (:disconnect sid)
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
