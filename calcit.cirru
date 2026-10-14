@@ -1889,9 +1889,18 @@
               not $ identical? @*reader-reel @*reel
               reset! *reader-reel @*reel
               sync-clients! @*reader-reel
+            , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+          :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ []
+          :tests $ [] $ %{} 'TestEntry (:name |unchanged-reel-still-returns-unit)
+            :code $ quote $ let
+                original @*reader-reel
+              reset! *reader-reel @*reel
+              assert= &unit $ render-loop!
+              assert= true $ identical? @*reader-reel @*reel
+              reset! *reader-reel original
+            :tags $ #{} :server-effect :unit
         'replay-updater $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn replay-updater (db op sid op-id op-time)
             if (enum? op)

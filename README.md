@@ -62,6 +62,8 @@ String 键消息集合；session key 保持 Number。定义测试覆盖仅删除
 验证 Unit 返回、数据库保持和原记录行为，并恢复进程内 Reel；不执行持久化分支。
 服务端在读取消息字段前验证解析结果为 `Map<Tag, Dynamic>`，进入 dispatch 前
 校验操作名为 Tag；传输格式仍是原 Cirru EDN Map，未知 kind 的日志行为不变。
+定时渲染回调明确返回 Unit，包括 Reel 未变化、不需要同步客户端的分支。
+两项 `server-effect` 测试使用正式 0.29.3 CLI 验证返回值和进程内状态；共同语义测试仍为 47 项。
 
 ## 部署
 
@@ -81,7 +83,7 @@ PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL
 - 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
 - Highlight.js 仍使用原有 legacy 调用方式，保留其弃用提示，未宣称已迁移该接口。
 - 完整 `fix --workflow strict --verify` 被 core `update-in` 的回调泛型输入证明阻断；双入口检查通过不等同完整收尾。
-- 未发布的 core 修复候选已越过该阻塞，但应用 updater 的返回证明仍待处理；候选诊断不等同匹配正式版本的完整验收。
+- 未发布的 core 修复候选通过当前完整 strict；这不等同正式版本的完整验收，也不替代剩余业务回放与依赖退场核对。
 
 ## License
 
