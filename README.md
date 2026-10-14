@@ -38,7 +38,7 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 `:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
 
 定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、42 项 native / 生成 JS 共享回放及前端构建通过。
+当前候选双入口严格检查、45 项 native / 生成 JS 共享回放及前端构建通过。
 路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
 不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
 
@@ -50,6 +50,10 @@ focus 分组保持 List，session key 保持 Number。登录输入派发一个 `
 Cirru EDN patch，避免将传输中的 enum 直接当作已校验的名义值。
 Markdown 使用正式 0.4.53，高亮回调的输入与输出均有 String 合同。
 隔离浏览器已验证实际代码高亮、Number session key 和刷新后自动登录。
+
+删除 session 消息时在使用边界验证 Tag 键 payload、String 消息 ID 和
+String 键消息集合；session key 保持 Number。定义测试覆盖仅删除目标消息、
+其他 session 和字段保持不变、目标缺失及非法 payload 拒绝。
 
 ## 部署
 
@@ -69,6 +73,7 @@ PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL
 - 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
 - Highlight.js 仍使用原有 legacy 调用方式，保留其弃用提示，未宣称已迁移该接口。
 - 完整 `fix --workflow strict --verify` 被 core `update-in` 的回调泛型输入证明阻断；双入口检查通过不等同完整收尾。
+- 未发布的 core 修复候选已越过该阻塞，但应用 updater 的返回证明仍待处理；候选诊断不等同匹配正式版本的完整验收。
 
 ## License
 

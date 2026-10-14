@@ -2510,14 +2510,76 @@
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
         'remove-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-message (db op-data sid op-id op-time)
-            update-in db ([] :sessions sid :messages)
-              fn (messages)
-                dissoc
-                  option:unwrap-or messages $ {}
-                  &map:get (assert-type op-data 'Map) :id
+            let
+                payload $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
+                message-id $ decode-map-as (&map:get payload :id) 'String
+              update-in db ([] :sessions sid :messages)
+                fn (messages)
+                  dissoc
+                    decode-map-as
+                      option:unwrap-or messages $ {}
+                      :: 'Map 'String 'Dynamic
+                    , message-id
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :tests $ []
+            %{} 'TestEntry
+              :name |removal-preserves-numeric-session-and-other-messages
+              :code $ quote $ let
+                  removed-message $ {} (:id |m-1) (:text "|错误🐈")
+                  second $ {} (:id |m-2) (:text "|保留")
+                  other-session $ {} $ :messages
+                    {} $ |m-3 second
+                  current-session $ {}
+                    :cursor $ [] :article 42
+                    :messages $ {} (|m-1 removed-message) (|m-2 second)
+                  db $ {}
+                    :users $ {} $ |u-1
+                      {} $ :name |Ada
+                    :sessions $ {} (42 current-session) (7 other-session)
+                  expected $ assoc-in db ([] :sessions 42 :messages)
+                    {} $ |m-2 second
+                assert= expected $ remove-message db
+                  {} $ :id |m-1
+                  , 42 |op 1
+              :tags $ #{} :message :unit
+            %{} 'TestEntry (:name |missing-message-preserves-existing-data)
+              :code $ quote $ let
+                  message $ {} (:id |m-1) (:text "|保留")
+                  db $ {} $ :sessions
+                    {} $ 42 $ {}
+                      :messages $ {} $ |m-1 message
+                assert= db $ remove-message db
+                  {} $ :id |missing
+                  , 42 |op 1
+                assert=
+                  {} $ :sessions $ {}
+                    42 $ {} $ :messages ({})
+                  remove-message ({})
+                    {} $ :id |missing
+                    , 42 |op 1
+              :tags $ #{} :message :unit
+            %{} 'TestEntry (:name |removal-rejects-invalid-payload-and-message-key)
+              :code $ quote $ let
+                  rejected? $ fn (payload)
+                    hint-fn $ {}
+                      :args $ [] 'Dynamic
+                      :return 'Bool
+                    try
+                      do
+                        remove-message ({}) payload 42 |op 1
+                        , false
+                      fn (message)
+                        hint-fn $ {}
+                          :args $ [] 'String
+                          :return 'Bool
+                        , true
+                assert= true $ rejected? nil
+                assert= true $ rejected? $ {}
+                assert= true $ rejected? $ {} (:id 42)
+                assert= true $ rejected? $ {} (:id nil)
+              :tags $ #{} :message :unit
         'view-article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn view-article (db op-data sid op-id op-time)
             update-in db ([] :sessions sid)
