@@ -56,6 +56,7 @@ jobs:
         git diff --exit-code -- calcit.cirru
         calcit calcit.cirru --check-only --warn-dyn-method
         calcit calcit.cirru --entry server --check-only --warn-dyn-method
+        calcit calcit.cirru fix --workflow strict --verify --format edn
         calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
         calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 

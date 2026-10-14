@@ -7,7 +7,7 @@
 
 ## 开发与构建
 
-候选迁移使用正式 Calcit / `@calcit/procs` 0.29.3、Node.js 24 和 Yarn 4.18.0。
+候选迁移使用已发布的 Calcit / `@calcit/procs` 0.30.0-alpha.3、Node.js 24 和 Yarn 4.18.0。
 `deps.cirru` 记录精确模块版本。先安装匹配的 CLI，再运行：
 
 ```sh
@@ -16,6 +16,7 @@ yarn install --immutable
 caps verify --toolchain
 calcit calcit.cirru --check-only
 calcit calcit.cirru --entry server --check-only
+calcit calcit.cirru fix --workflow strict --verify --format edn
 calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
 calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 calcit calcit.cirru js
@@ -63,7 +64,11 @@ String 键消息集合；session key 保持 Number。定义测试覆盖仅删除
 服务端在读取消息字段前验证解析结果为 `Map<Tag, Dynamic>`，进入 dispatch 前
 校验操作名为 Tag；传输格式仍是原 Cirru EDN Map，未知 kind 的日志行为不变。
 定时渲染回调明确返回 Unit，包括 Reel 未变化、不需要同步客户端的分支。
-两项 `server-effect` 测试使用正式 0.29.3 CLI 验证返回值和进程内状态；共同语义测试仍为 47 项。
+两项 `server-effect` 测试使用发布版 CLI 验证返回值和进程内状态；共同语义测试仍为 47 项。
+
+已发布的 alpha.3 配对工具链通过完整 strict workflow，47 项共同测试在 native / JS
+各通过一次，另有两项 native server-effect 测试；前端生成和 Vite 构建通过。
+这些检查不修改应用源码、选择新的业务默认值或放宽类型。
 
 ## 部署
 
@@ -82,8 +87,7 @@ PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL
 - UI state 和投影 Map 的开放字段仍需在具体使用处验证，未宣称已全部静态化。
 - 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
 - Highlight.js 仍使用原有 legacy 调用方式，保留其弃用提示，未宣称已迁移该接口。
-- 完整 `fix --workflow strict --verify` 被 core `update-in` 的回调泛型输入证明阻断；双入口检查通过不等同完整收尾。
-- 未发布的 core 修复候选通过当前完整 strict；这不等同正式版本的完整验收，也不替代剩余业务回放与依赖退场核对。
+- 传递模块仍有选版和旧 require 写法告警；正式依赖迁移、完整浏览器业务和依赖退场核对尚未完成。
 
 ## License
 
