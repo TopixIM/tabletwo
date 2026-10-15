@@ -20,12 +20,12 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Check out repository
-      uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      uses: actions/checkout@v7.0.1
       with:
         persist-credentials: false
 
     - name: Set up Node.js
-      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      uses: actions/setup-node@v6.5.0
       with:
         node-version: 24
         package-manager-cache: false
@@ -33,11 +33,10 @@ jobs:
     - name: Enable Corepack
       run: |
         corepack enable
-        corepack prepare yarn@4.12.0 --activate
-        yarn --version
+        corepack prepare yarn@4.18.0 --activate
 
     - name: Set up Calcit and Caps
-      uses: calcit-lang/setup-calcit@ca701be5a471759e442aa053cd100720bbe1f09f # v1.5.0
+      uses: calcit-lang/setup-calcit@v1.5.0
       with:
         deps-file: deps.cirru
         tools: calcit,caps
@@ -46,7 +45,7 @@ jobs:
     - name: Resolve immutable dependencies
       run: |
         set -euo pipefail
-        caps --ci
+        caps --strict --ci
         yarn install --immutable
         caps verify --toolchain
 
@@ -55,10 +54,11 @@ jobs:
         set -euo pipefail
         calcit calcit.cirru edit format
         git diff --exit-code -- calcit.cirru
-        calcit calcit.cirru --check-only
-        calcit calcit.cirru --entry server --check-only
-        calcit calcit.cirru analyze deprecated --summary-only
-        calcit calcit.cirru --entry server analyze deprecated --summary-only
+        calcit calcit.cirru --check-only --warn-dyn-method
+        calcit calcit.cirru --entry server --check-only --warn-dyn-method
+        calcit calcit.cirru fix --workflow strict --verify --format edn
+        calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
+        calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 
     - name: Select CDN asset path
       id: asset-path
@@ -66,6 +66,7 @@ jobs:
         CDN_ORIGIN: https://cos-sh.tiye.me
         PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
+        set -euo pipefail
         if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
           asset_prefix="${GITHUB_REPOSITORY}/pr/${PR_NUMBER}/${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}/"
         else
@@ -81,9 +82,7 @@ jobs:
         set -euo pipefail
         calcit calcit.cirru js
         yarn vite build --base="$VITE_BASE_URL"
-        calcit calcit.cirru --entry server ir
         mkdir -p dist-server
-        cp js-out/program-ir.cirru dist-server/compact.cirru
         cp calcit.cirru deps.cirru package.json dist-server/
 
     - name: Check COS credentials
@@ -119,11 +118,10 @@ jobs:
         secret-id: ${{ secrets.COS_SECRET_ID }}
         secret-key: ${{ secrets.COS_SECRET_KEY }}
 
-
     - name: Upload web assets
       id: deploy
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: Pendect/action-rsyncer@2554a1e574cf229fb144f23ea5971dbdca8ae8e3 # v1.1.0
+      uses: Pendect/action-rsyncer@v1.1.0
       env:
         DEPLOY_KEY: ${{secrets.rsync_private_key}}
       with:
@@ -133,14 +131,10 @@ jobs:
         src: 'dist/*'
         dest: 'rsync-user@tiye.me:/web-assets/repo/${{ github.repository }}'
 
-    - name: Display status from deploy
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: echo "${{ steps.deploy.outputs.status }}"
-
     - name: Upload server script
       id: deploy-server
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: Pendect/action-rsyncer@2554a1e574cf229fb144f23ea5971dbdca8ae8e3 # v1.1.0
+      uses: Pendect/action-rsyncer@v1.1.0
       env:
         DEPLOY_KEY: ${{secrets.rsync_private_key}}
       with:
@@ -149,7 +143,3 @@ jobs:
         ssh_options: ''
         src: 'dist-server/*'
         dest: 'rsync-user@tiye.me:/servers/tabletwo/'
-
-    - name: Display status from deploy
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: echo "${{ steps.deploy-server.outputs.status }}"
