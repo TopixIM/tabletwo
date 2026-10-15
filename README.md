@@ -7,92 +7,89 @@
 
 ## 开发与构建
 
-候选迁移使用已发布的 Calcit / `@calcit/procs` 0.30.0-alpha.3、Node.js 24 和 Yarn 4.18.0。
-`deps.cirru` 记录精确模块版本。先安装匹配的 CLI，再运行：
+使用 Node.js 24、Yarn 4.18.0 和 Caps 0.1.1。
+先安装 `deps.cirru :calcit-version` 指定的已发布 Calcit CLI，
+`package.json` 中的 `@calcit/procs` 必须与它精确配对。
+模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
 ```sh
-caps --ci
+caps --strict --ci
 yarn install --immutable
 caps verify --toolchain
-calcit calcit.cirru --check-only
-calcit calcit.cirru --entry server --check-only
+calcit calcit.cirru --check-only --warn-dyn-method
+calcit calcit.cirru --entry server --check-only --warn-dyn-method
 calcit calcit.cirru fix --workflow strict --verify --format edn
-calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
-calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
+calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only --format edn
+calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only --format edn
 calcit calcit.cirru js
 yarn release-page
 ```
 
-前端以单个 Enum 派发操作，服务端保留原 `op` / `data` envelope。
-投影保留 Map 与 Cirru EDN 传输格式；客户端保存
-`Ref<Option<Map<Tag, Dynamic>>>`，离线时为 None，连接后为 Some。
-升级已运行的页面时完整刷新，避免热重载保留旧状态和 watcher。
+`yarn watch-page` 显式监听源码变化。生成的 `js-out/`、`dist/`、
+`dist-server/` 和 `.calcit/` 缓存不提交。
 
-导航在投影 Map 的使用边界验证 `logged-in?` 为 Bool，成员计数为
-`Option<Number>`：缺失与 nil 保留原来的空值显示，0 仍显示为 0。
-导航 props 使用只声明 style 与 EventHandler 的具名 `NavigationProps`，
-通过 Respo 原有 record props 接口渲染，不改变投影或消息的 EDN 格式。
-离线分支先判断 store，再读取在线 session。
+`calcit.cirru` 是结构化程序，修改前先读取当前 CLI 的 mutation contract，
+用 query 定位，再通过结构化命令和 revision 守卫写入：
 
-投影中的标题、段落正文、登录字段和编辑时间在实际使用边界解码；
-focus 分组保持 List，session key 保持 Number。登录输入派发一个 `:states` Enum，
-登录保存与退出清理使用 JS FFI 模块的类型化 storage 接口。
-`:require` 规则和 `:refer` 名称列表使用 Cirru syntax list，不加多余 `[]`。
+```sh
+calcit docs agents --contract
+calcit query context app.client/main! --format edn
+```
 
-定义内的 `:tests` 验证空值、Unicode、0、访客投影、编辑时间选择、段落插入和消息顺序。
-当前候选双入口严格检查、50 项 native / 生成 JS 共享回放及前端构建通过。
-路由数据按实际用途解码：文章数据使用 Tag 键，profile 成员使用 Number session 键，
-不会将所有路由都解释成同一种 Map。宿主 trait 使用完整类型引用，拖放 props 与回调有明确合同。
+`:require` 规则和 `:refer` 名称列表直接使用 Cirru syntax list，不加前导 `[]`。
 
-验收以双入口严格类型检查、定义内 `:tests`、native / 生成 JS 共享语义测试和
-真实业务回放为准。已删除 CI 不再使用的 Dynamic / unsafe 数量基线；
-这不放宽类型合同，也不以增加预算代替验证。
+## 类型与运行合同
 
-登录凭据在服务端解码为具名结构；客户端通过 Recollect 已发布的 codec 还原
-Cirru EDN patch，避免将传输中的 enum 直接当作已校验的名义值。
-Markdown 使用正式 0.4.53，高亮回调的输入与输出均有 String 合同。
-隔离浏览器已验证实际代码高亮、Number session key 和刷新后自动登录。
+前端以单个 Enum 派发操作，服务端保留原 `op` / `data` envelope；
+消息和存储默认使用 Cirru EDN。Recollect 的发布版 codec 还原 patch 的名义值，
+开放 wire Map 不直接断言成已验证的业务类型。
 
-删除 session 消息时在使用边界验证 Tag 键 payload、String 消息 ID 和
-String 键消息集合；session key 保持 Number。定义测试覆盖仅删除目标消息、
-其他 session 和字段保持不变、目标缺失及非法 payload 拒绝。
-根 updater 在返回协议边界验证 `Map<Tag, Dynamic>`，保留原操作分派和未知操作
-返回原状态的行为；测试覆盖连接、断开及 Number session key。
-服务端 `dispatch!` 完成持久化或 Reel 更新后明确返回 Unit，不把 `reset!` 的
-赋值结果当作 Unit。另有一项 `server-effect` 定义测试在 native server entry 下
-验证 Unit 返回、数据库保持和原记录行为，并恢复进程内 Reel；不执行持久化分支。
-服务端在读取消息字段前验证解析结果为 `Map<Tag, Dynamic>`，进入 dispatch 前
-校验操作名为 Tag；传输格式仍是原 Cirru EDN Map，未知 kind 的日志行为不变。
-定时渲染回调明确返回 Unit，包括 Reel 未变化、不需要同步客户端的分支。
-两项 `server-effect` 测试使用发布版 CLI 验证返回值和进程内状态；共同语义测试为 50 项。
+客户端 store 是 `Ref<Option<Map<Tag, Dynamic>>>`：离线为 None，连接后为 Some。
+session key 保持 Number；路由、消息、标题、正文、凭据和时间在具体使用处验证。
+成员计数的缺失与 nil 保持空值显示，0 仍显示为 0。
 
-已发布的 alpha.3 配对工具链通过完整 strict workflow，50 项共同测试在 native / JS
-各通过一次，另有两项 native server-effect 测试；前端生成和 Vite 构建通过。
-这些检查不修改应用源码、选择新的业务默认值或放宽类型。
+组件 props、拖放事件和 storage/time/DOM 等宿主方法具有明确合同。
+渲染与服务端 effect callback 返回 Unit，Reel 未变化的分支同样遵守该合同；
+不把 `reset!` 或连接函数的赋值结果当作 Unit，也不在尾 recur 后补 Unit。
+升级已运行的页面时完整刷新，避免保留旧状态或 watcher。
 
-Text 导出使用保留 key/value 类型的 MapEntry，按段落 key 排序并验证文本字段，
-保留标题、分隔符、Unicode 和 HTML 转义。定义测试验证正常导出、空集合和非法字段拒绝。
-隔离浏览器已验证当前版本的双客户端编辑、追加、拖放顺序同步、高亮、自动登录、
-持久化重启与退出；Text 点击不再出现 Option 被当作 Map 的解码错误。
+Markdown 高亮回调保持 String 输入和输出。Text 导出通过类型化 MapEntry
+保留段落 key/value，按 key 排序后验证正文；输出保留标题、分隔符与 Unicode，
+写入弹窗前转义 HTML。
+
+## 验证
+
+语义测试保存在定义的 `:tests` 中，涵盖空值、Unicode、0、访客、
+时间选择、段落和消息顺序、文本导出及错误输入拒绝。
+`server-effect` 测试在 native server entry 下验证 Unit 和进程内状态，
+并恢复测试修改的 Reel；共同语义回放复用 Calcit 仓库已有的
+`scripts/run-core-tests.mjs`，比较 native / JS 的原断言与日志。
+
+验收还包括双入口完整 strict、严格依赖图、生产构建、
+隔离 WebSocket 与持久化，以及真实浏览器交互。
+测试使用合成数据库和独立服务，不连接生产存储。
+Dynamic / unsafe 数量基线已退役，不以统计预算代替类型和业务语义门槛。
 
 ## 部署
 
 COS 只接收前端 `dist/` 资产。生产前缀为 `TopixIM/tabletwo/`；
-PR 前缀带 PR 编号、run 和 attempt，使用 COS Action 的内置公共 URL 校验。
+PR 前缀包含编号、run 和 attempt，使用 COS Action 的公共 URL 校验。
 上传按事件和分支排队，job / 上传分别限制为 15 / 10 分钟。
-原网页入口与 `/servers/tabletwo/` rsync 服务端部署路径保持不变。
-`dist-server/` 由构建生成，不提交产物。
-服务端包保存 `calcit.cirru` 和依赖清单；服务器安装匹配工具与模块后运行
-`calcit calcit.cirru --entry server`。诊断 IR 不再伪装成 `compact.cirru` 部署。
+
+只有 main 触发原网页与 `/servers/tabletwo/` 的 rsync 部署。
+`dist-server/` 保存 Snapshot 与依赖清单；服务器安装匹配工具和模块后运行：
+
+```sh
+calcit calcit.cirru --entry server
+```
 
 ## 限制
 
-- 完整业务、宿主交互与浏览器验收尚未完成，局部回放不代表整项迁移通过。
-- 旧 0.28 分支的隔离回放不能证明此候选或完整 UI 已通过。
-- UI state 和投影 Map 的开放字段仍需在具体使用处验证，未宣称已全部静态化。
-- 普通 Caps 的传递版本选择告警不等同严格依赖解析通过。
-- Highlight.js 仍使用原有 legacy 调用方式，保留其弃用提示，未宣称已迁移该接口。
-- 传递模块仍有选版和旧 require 写法告警；正式依赖迁移、完整浏览器业务和依赖退场核对尚未完成。
+- 完整交互及迁移验收尚未完成，局部测试不代表整个应用已可发布。
+- 删除 Confirm 与 Text 弹窗完整内容仍需独立验收。
+- 框架 state、投影和宿主的开放边界仍存在，不宣称全应用已静态化。
+- Highlight.js 保留原 legacy 调用及弃用提示，依赖中仍有旧 require 写法告警。
+- Vite 保留大 chunk 提示，未通过放宽阈值掩盖。
 
 ## License
 
