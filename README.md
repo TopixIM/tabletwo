@@ -12,6 +12,13 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
+当前 CLI / `@calcit/procs` 精确配对正式 0.30.0。本轮为 0.30.1 迁移准备，
+将应用和原测试的底层 Map 读取改为公开 `get` / Option 接口；缺失值仍还原为
+原来的 nil，保留现有 decoder、false、0 和默认值，不新增统一包装或强转。
+段落排序使用类型化 `MapEntry` 保留 String key。拖放缺少 target/base 时明确报错；
+同时修复原 `update` 把嵌套 session 路径当单键、移动后未更新编辑光标的问题，
+改用 `update-in` 并处理 Option 输入，Number session key 不变。
+
 ```sh
 caps --strict --ci
 yarn install --immutable
@@ -86,6 +93,8 @@ calcit calcit.cirru --entry server
 ## 限制
 
 - 完整交互及迁移验收尚未完成，局部测试不代表整个应用已可发布。
+- 0.30.1 尚未正式发布；alpha.4 的只读探测仍被 WS-EDN、Respo、Recollect
+  等已锁定依赖的旧底层接口阻塞。本轮不改用 alpha、不宣称整图已兼容 0.30.1。
 - 删除 Confirm 与 Text 弹窗完整内容仍需独立验收。
 - 框架 state、投影和宿主的开放边界仍存在，不宣称全应用已静态化。
 - Highlight.js 保留原 legacy 调用及弃用提示，依赖中仍有旧 require 写法告警。
