@@ -20,7 +20,9 @@
 改用 `update-in` 并处理 Option 输入，Number session key 不变。
 排序键依赖使用正式 Bisection Key 0.0.32，并同步正式 std 0.2.43，避免严格图中
 根依赖仍固定旧 std；不使用候选分支或 hash。本次依赖更新不改应用源码、原断言、
-数据库、部署目录或 COS 前缀；Cumulo/Recollect/WS 的另一组升级仍独立等待正式版本。
+数据库、部署目录或 COS 前缀。实时协作依赖同步已发布的 Cumulo Reel 0.0.54、
+Recollect 0.0.61、WS-EDN 0.0.40 和 Respo Message 0.0.35，保持根依赖与传递依赖一致。
+此次依赖更新不代表服务器已经准备好，也不触发生产合并部署。
 
 ```sh
 caps --strict --ci
