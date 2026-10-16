@@ -9,9 +9,9 @@
     |Respo/respo-message.calcit |0.0.34
     |Respo/respo-ui.calcit |0.7.39
     |Respo/respo.calcit |0.16.120
-    |calcit-lang/bisection-key |0.0.30
+    |calcit-lang/bisection-key |0.0.32
     |calcit-lang/calcit-wss |0.2.34
-    |calcit-lang/calcit.std |0.2.41
+    |calcit-lang/calcit.std |0.2.43
     |calcit-lang/memof |0.0.38
     |calcit-lang/recollect |0.0.60
     |mvc-works/ws-edn.calcit |0.0.39

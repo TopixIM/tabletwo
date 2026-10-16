@@ -18,6 +18,9 @@
 段落排序使用类型化 `MapEntry` 保留 String key。拖放缺少 target/base 时明确报错；
 同时修复原 `update` 把嵌套 session 路径当单键、移动后未更新编辑光标的问题，
 改用 `update-in` 并处理 Option 输入，Number session key 不变。
+排序键依赖使用正式 Bisection Key 0.0.32，并同步正式 std 0.2.43，避免严格图中
+根依赖仍固定旧 std；不使用候选分支或 hash。本次依赖更新不改应用源码、原断言、
+数据库、部署目录或 COS 前缀；Cumulo/Recollect/WS 的另一组升级仍独立等待正式版本。
 
 ```sh
 caps --strict --ci
