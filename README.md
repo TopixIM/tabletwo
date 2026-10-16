@@ -12,16 +12,19 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
-当前 CLI / `@calcit/procs` 精确配对正式 0.30.0。本轮为 0.30.1 迁移准备，
-将应用和原测试的底层 Map 读取改为公开 `get` / Option 接口；缺失值仍还原为
+当前 CLI / `@calcit/procs` 精确配对 0.30.1-alpha.4，并已执行实际运行验收，
+不是只读兼容性探测。前轮已将应用和原测试的底层 Map 读取改为公开 `get` / Option 接口；缺失值仍还原为
 原来的 nil，保留现有 decoder、false、0 和默认值，不新增统一包装或强转。
 段落排序使用类型化 `MapEntry` 保留 String key。拖放缺少 target/base 时明确报错；
 同时修复原 `update` 把嵌套 session 路径当单键、移动后未更新编辑光标的问题，
 改用 `update-in` 并处理 Option 输入，Number session key 不变。
 排序键依赖使用正式 Bisection Key 0.0.32，并同步正式 std 0.2.43，避免严格图中
-根依赖仍固定旧 std；不使用候选分支或 hash。本次依赖更新不改应用源码、原断言、
-数据库、部署目录或 COS 前缀。实时协作依赖同步已发布的 Cumulo Reel 0.0.54、
-Recollect 0.0.61、WS-EDN 0.0.40 和 Respo Message 0.0.35，保持根依赖与传递依赖一致。
+根依赖仍固定旧 std；不使用候选分支或 hash。实时协作依赖同步正式 tag 的
+Cumulo Reel 0.0.55、Recollect 0.0.62、WS-EDN 0.0.41、Respo Message 0.0.37，
+并同步 Respo 0.16.122、UI 0.7.41、Alerts 0.10.55、Markdown 0.4.56、Feather 0.4.29。
+没有模块或业务引用的 Memof 从根依赖和双入口配置移除，不改其 Anchor 合同。
+15 处旧调用迁移到 `defref`、`match`、`distinct-values` 和 `set-interval!`；
+保留 Set 去重、分支默认值及定时器参数语义。原断言、数据库、部署目录与 COS 前缀不变。
 此次依赖更新不代表服务器已经准备好，也不触发生产合并部署。
 
 ```sh
@@ -31,6 +34,7 @@ caps verify --toolchain
 calcit calcit.cirru --check-only --warn-dyn-method
 calcit calcit.cirru --entry server --check-only --warn-dyn-method
 calcit calcit.cirru fix --workflow strict --verify --format edn
+calcit calcit.cirru analyze weak-types --only deprecated-call --format json
 calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only --format edn
 calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only --format edn
 calcit calcit.cirru js
@@ -80,6 +84,10 @@ Markdown 高亮回调保持 String 输入和输出。Text 导出通过类型化 
 验收还包括双入口完整 strict、严格依赖图、生产构建、
 隔离 WebSocket 与持久化，以及真实浏览器交互。
 测试使用合成数据库和独立服务，不连接生产存储。
+本轮原有共同测试 native / JS 各 51/51（无排除），server-effect 2/2；
+完整 strict 无诊断，应用废弃调用为零。真实浏览器双客户端验证登录、
+含 HTML 字面量和 Unicode 的段落修改同步，以及删除 Confirm 的取消、确认和同步。
+隔离 native 服务验证访客 patch、未知消息分支、回调实际 Unit、断连、持久化及 SIGINT 正常退出。
 Dynamic / unsafe 数量基线已退役，不以统计预算代替类型和业务语义门槛。
 
 ## 部署
@@ -97,11 +105,10 @@ calcit calcit.cirru --entry server
 
 ## 限制
 
-- 完整交互及迁移验收尚未完成，局部测试不代表整个应用已可发布。
-- 0.30.1 尚未正式发布；正式依赖图下 alpha.4 只读检查的服务端 77/77 通过，
-  客户端仍有 Respo 和 Alerts 的 6 个失败定义（308 通过、131 阻塞、1 级联）。
-  该静态探测不是 alpha 运行验收；本轮不改用 alpha、不宣称整图已兼容 0.30.1。
-- 删除 Confirm 与 Text 弹窗完整内容仍需独立验收。
+- 0.30.1 尚未正式发布，当前明确固定 alpha.4；服务端也必须安装匹配 CLI 与模块，
+  不能只升级网页后继续运行旧服务。服务器准备情况未确认，本 PR 不触发生产合并部署。
+- Text 导出的排序、标题和 Unicode 原断言通过，但本地浏览器点击后未暴露可读取的弹窗，
+  完整弹窗内容与 HTML 转义的浏览器验收仍未完成，不计作通过。
 - 框架 state、投影和宿主的开放边界仍存在，不宣称全应用已静态化。
 - Highlight.js 保留原 legacy 调用及弃用提示，依赖中仍有旧 require 写法告警。
 - Vite 保留大 chunk 提示，未通过放宽阈值掩盖。
