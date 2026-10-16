@@ -57,6 +57,7 @@ jobs:
         calcit calcit.cirru --check-only --warn-dyn-method
         calcit calcit.cirru --entry server --check-only --warn-dyn-method
         calcit calcit.cirru fix --workflow strict --verify --format edn
+        calcit calcit.cirru analyze weak-types --only deprecated-call --format json | jq -e '.data.summary.calls == 0'
         calcit calcit.cirru test --exclude-tag server-effect --require-match --summary-only
         calcit calcit.cirru --entry server test --tag server-effect --require-match --summary-only
 

@@ -5,23 +5,23 @@
   :entries $ {}
     :default $ {} (:description |) (:init-fn 'app.client/main!) (:mode :js) (:reload-fn 'app.client/reload!) (:target :browser)
       :feature-policy $ {}
-      :modules $ [] |respo.calcit/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |bisection-key/ |respo-feather.calcit/ |respo-markdown.calcit/
+      :modules $ [] |respo.calcit/ |recollect/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |bisection-key/ |respo-feather.calcit/ |respo-markdown.calcit/
       :type-slots $ {}
     :server $ {} (:description |) (:init-fn 'app.server/main!) (:mode :native) (:reload-fn 'app.server/reload!) (:target :native)
       :feature-policy $ {}
-      :modules $ [] |recollect/ |memof/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |bisection-key/ |calcit.std/ |calcit-wss/
+      :modules $ [] |recollect/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |bisection-key/ |calcit.std/ |calcit-wss/
       :type-slots $ {}
   :files $ {}
     'app.client $ %{} 'FileEntry
       :defs $ {}
         '*states $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *states
+          :code $ quote $ defref *states
             {} $ :states $ {}
               :cursor $ []
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
         '*store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *store (Option :none)
+          :code $ quote $ defref *store (Option :none)
           :examples $ []
           :schema $ :: 'Ref $ :: 'Option (:: 'Map 'Tag 'Dynamic)
         'connect! $ %{} 'CodeEntry (:doc |)
@@ -56,8 +56,7 @@
               when
                 and config/dev? $ not= op :states
                 println |Dispatch op data
-              case-default op
-                ws-send! $ {} (:kind :op) (:op op) (:data data)
+              match op
                 :states $ let[] (cursor s) params $ reset! *states
                   decode-map-as
                     update-states @*states
@@ -65,6 +64,7 @@
                       , s
                     :: 'Map 'Tag 'Dynamic
                 :effect/connect $ do (connect!) &unit
+                _ $ ws-send! $ {} (:kind :op) (:op op) (:data data)
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -113,9 +113,8 @@
           :code $ quote $ defn on-server-data (data)
             let
                 data-map $ decode-map-as data $ :: 'Map 'Tag 'Dynamic
-              case-default
+              match
                 .unwrap-or (get data-map :kind) nil
-                js/console.warn "|unknown server data kind:" data
                 :patch $ let
                     changes $ .unwrap-or (get data-map :data) nil
                   when config/dev? $ js/console.log |Changes $ to-js-data changes
@@ -126,6 +125,7 @@
                       next-value $ patch-twig base $ schema/read-patch-changes changes
                       next-store $ decode-map-as next-value $ :: 'Map 'Tag 'Dynamic
                     reset! *store $ Option :some next-store
+                _ $ js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -443,11 +443,8 @@
                       unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
                     comp-navigation (:logged-in? navigation-view) (:count navigation-view)
                     if (:logged-in? navigation-view)
-                      case-default
+                      match
                         .unwrap-or (get router :name) nil
-                        div
-                          {} $ :style ui/flex
-                          <> $ str router
                         :profile $ comp-profile
                           .unwrap-or (get store-map :user) nil
                           decode-map-as router-data $ :: 'Map 'Number 'Dynamic
@@ -462,6 +459,9 @@
                             .unwrap-or (get article-data :focuses) nil
                             .unwrap-or (get article-data :members) nil
                             , paragraph-id
+                        _ $ div
+                          {} $ :style ui/flex
+                          <> $ str router
                       comp-login $ >> states :login
                   let
                       visible? $ and (:logged-in? navigation-view) (non-nil? paragraph-id)
@@ -1891,11 +1891,11 @@
     'app.server $ %{} 'FileEntry
       :defs $ {}
         '*client-caches $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *client-caches ({})
+          :code $ quote $ defref *client-caches ({})
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Number (:: 'Map 'Tag 'Dynamic)
         '*initial-db $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *initial-db
+          :code $ quote $ defref *initial-db
             if
               path-exists? $ dbg storage-file
               do (println "|Found local EDN data")
@@ -1906,11 +1906,11 @@
           :examples $ []
           :schema $ :: 'Dynamic
         '*reader-reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reader-reel @*reel
+          :code $ quote $ defref *reader-reel @*reel
           :examples $ []
           :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
+          :code $ quote $ defref *reel
             ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
           :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
@@ -1970,8 +1970,8 @@
               println $ str "|Server started on port:" port
             ; "|init it before doing multi-threading"
             identity @*reader-reel
-            set-interval 200 $ fn () $ render-loop!
-            set-interval 600000 $ fn () $ persist-db!
+            set-interval! 200 $ fn () $ render-loop!
+            set-interval! 600000 $ fn () $ persist-db!
             on-control-c on-exit!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
@@ -2041,15 +2041,15 @@
                   (:message sid msg)
                     let
                         action $ decode-map-as (parse-cirru-edn msg) (:: 'Map 'Tag 'Dynamic)
-                      case-default
+                      match
                         .unwrap-or (get action :kind) nil
-                        println "|unknown action:" action
                         :op $ dispatch!
                           decode-map-as
                             .unwrap-or (get action :op) nil
                             , 'Tag
                           .unwrap-or (get action :data) nil
                           , sid
+                        _ $ println "|unknown action:" action
                   (:disconnect sid)
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
@@ -2101,7 +2101,7 @@
             recollect.memo :refer $ begin-twig-frame! finish-twig-frame!
             app.$meta :refer $ calcit-dirname
             calcit.std.fs :refer $ path-exists? check-write-file!
-            calcit.std.time :refer $ set-interval
+            calcit.std.time :refer $ set-interval!
             calcit.std.date :refer $ Date get-time! extract-time
             calcit.std.path :refer $ join-path
     'app.style $ %{} 'FileEntry
@@ -2208,9 +2208,8 @@
                     :user $ twig-user $ option:unwrap-or
                       get-in db-map $ [] :users user-id
                       {}
-                    :router $ assoc router :data $ case-default
+                    :router $ assoc router :data $ match
                       .unwrap-or (get router :name) nil
-                      {}
                       :home $ {}
                         :articles $ twig-articles $ .unwrap-or (get db-map :articles) nil
                         :focuses $ twig-focuses :article-id sessions users
@@ -2224,6 +2223,7 @@
                           :focuses $ twig-focuses :paragraph-id sessions users
                           :members $ twig-members article-id sessions users
                       :profile $ twig-profile sessions users
+                      _ $ {}
                     :count $ count sessions
                     :color $ rand-hex-color!
                   {}
@@ -2884,7 +2884,7 @@
                 users $ decode-map-as
                   option:unwrap-or (get db-map :users) ({})
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-                maybe-user $ -> users (vals) (.to-list)
+                maybe-user $ -> users (distinct-values) (.to-list)
                   find $ fn (user)
                     = username $ .unwrap-or
                       get
@@ -2978,7 +2978,7 @@
                   option:unwrap-or (get db-map :users) ({})
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
                 maybe-user $ find
-                  .to-list $ vals users
+                  .to-list $ distinct-values users
                   fn (user)
                     = username $ .unwrap-or
                       get
