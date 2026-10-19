@@ -52,7 +52,7 @@
             let
                 op $ &enum:nth action 0
                 params $ &enum:params action
-                data $ if (= op :states) params $ option:unwrap-or (first params) nil
+                data $ if (= op :states) params $ payload-to-wire params
               when
                 and config/dev? $ not= op :states
                 println |Dispatch op data
@@ -113,10 +113,9 @@
           :code $ quote $ defn on-server-data (data)
             let
                 data-map $ decode-map-as data $ :: 'Map 'Tag 'Dynamic
-              match
-                .unwrap-or (get data-map :kind) nil
-                :patch $ let
-                    changes $ .unwrap-or (get data-map :data) nil
+              if (field-is? data-map :kind :patch)
+                let
+                    changes $ required-field data-map :data
                   when config/dev? $ js/console.log |Changes $ to-js-data changes
                   let
                       base $ match @*store
@@ -125,12 +124,24 @@
                       next-value $ patch-twig base $ schema/read-patch-changes changes
                       next-store $ decode-map-as next-value $ :: 'Map 'Tag 'Dynamic
                     reset! *store $ Option :some next-store
-                _ $ js/console.warn "|unknown server data kind:" data
+                js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ [] 'Dynamic
             :features $ #{} :js-ffi
+        'payload-to-wire $ %{} 'CodeEntry
+          :doc "|Wire encoder for an action payload. An action without parameters is sent as :data nil; the server decodes it back with action-data-from-wire, and updaters treat nil op-data as no payload."
+          :code $ quote $ defn payload-to-wire (params)
+            option:unwrap-or (first params) nil
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+            :args $ [] $ :: 'List 'Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
+            :code $ quote $ do
+              assert= |a $ payload-to-wire $ [] |a |b
+              assert= nil $ payload-to-wire $ []
+            :tags $ #{} :operation :unit
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if
@@ -159,10 +170,8 @@
           :code $ quote $ defn render-app! ()
             render! mount-target
               comp-container
-                .unwrap-or (get @*states :states) nil
-                match @*store
-                  (:some online-store) online-store
-                  (:none) nil
+                .unwrap-or (get @*states :states) ({})
+                , @*store
               fn (value)
                 hint-fn $ {}
                   :args $ [] 'Dynamic
@@ -188,6 +197,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.client
           :require
+            app.decode :refer $ required-field field-is?
             respo.core :refer $ render! clear-cache! realize-ssr!
             respo.cursor :refer $ update-states
             app.comp.container :refer $ comp-container
@@ -217,9 +227,7 @@
             let
                 article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
                 article-title $ read-article-title article
-                article-id $ decode-map-as
-                  .unwrap-or (get article-map :id) nil
-                  , 'String
+                article-id $ decode-map-as (required-field article-map :id) 'String
                 focuses-map $ decode-map-as focuses $ :: 'Map 'String
                   :: 'List $ :: 'Map 'Tag 'Dynamic
                 edit-plugin $ use-prompt (>> states :edit)
@@ -266,8 +274,7 @@
                       .map $ fn (info)
                         let
                             info-map $ decode-map-as info $ :: 'Map 'Tag 'Dynamic
-                          []
-                            .unwrap-or (get info-map :id) nil
+                          [] (required-field info-map :id)
                             div
                               {} $ :style $ {} (:margin-right 8)
                               match (read-focus-name info-map)
@@ -285,13 +292,9 @@
             let
                 router-map $ decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
                 articles $ decode-map-as
-                  or
-                    .unwrap-or (get router-map :articles) nil
-                    {}
+                  field-or router-map :articles $ {}
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-                focuses $ or
-                  .unwrap-or (get router-map :focuses) nil
-                  {}
+                focuses $ field-or router-map :focuses $ {}
                 create-plugin $ use-prompt (>> states :create)
                   {} (:text "|Title of article:") (:initial |)
               div
@@ -313,9 +316,7 @@
                       let
                           article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
                         [] k $ comp-article
-                          >> states $ decode-map-as
-                            .unwrap-or (get article-map :id) nil
-                            , 'String
+                          >> states $ decode-map-as (required-field article-map :id) 'String
                           , article focuses
                 div ({})
                   button
@@ -336,9 +337,7 @@
           :code $ quote $ defn read-article-title (value)
             let
                 value-map $ decode-map-as value $ :: 'Map 'Tag 'Dynamic
-              decode-map-as
-                .unwrap-or (get value-map :title) nil
-                , 'String
+              decode-map-as (required-field value-map :title) 'String
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'Dynamic
@@ -373,9 +372,10 @@
           :code $ quote $ defn read-focus-name (info)
             let
                 info-map $ decode-map-as info $ :: 'Map 'Tag 'Dynamic
-                raw-name $ .unwrap-or (get info-map :name) nil
-              if (nil? raw-name) (Option :none)
-                Option :some $ decode-map-as raw-name 'String
+              match (optional-field info-map :name)
+                (:some raw-name)
+                  Option :some $ decode-map-as raw-name 'String
+                (:none) (Option :none)
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ [] 'Dynamic
@@ -392,6 +392,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.articles
           :require
+            app.decode :refer $ required-field optional-field field-or
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
@@ -406,87 +407,77 @@
             :count $ :: 'Option 'Number
           :examples $ []
           :schema $ :: 'StructDef
+        'StoreView $ %{} 'CodeEntry
+          :doc "|Typed view of the untyped store map synced from the server, decoded once per render by read-store-view."
+          :code $ quote $ defstruct StoreView (:navigation 'app.comp.container/NavigationView)
+            :router $ :: 'Map 'Tag 'Dynamic
+            :route-name $ :: 'Option 'Tag
+            :route-data 'Dynamic
+            :paragraph-id $ :: 'Option 'String
+            :color $ :: 'Option 'String
+            :messages $ :: 'Map 'String 'Dynamic
+          :examples $ []
+          :schema $ :: 'StructDef
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (states store)
-            if (nil? store) (comp-offline)
-              let
-                  states-map $ unsafe-coerce states 'Map
-                  store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
-                  navigation-view $ read-navigation-view store-map
-                  session $ decode-map-as
-                    .unwrap-or (get store-map :session) nil
-                    :: 'Map 'Tag 'Dynamic
-                  paragraph-id $ .unwrap-or (get session :paragraph-id) nil
-                  router $ if (:logged-in? navigation-view)
-                    decode-map-as
-                      .unwrap-or (get store-map :router) nil
-                      :: 'Map 'Tag 'Dynamic
-                    {}
-                  router-data $ .unwrap-or (get router :data) nil
-                  raw-color $ .unwrap-or (get store-map :color) nil
-                  status-color $ if (nil? raw-color) (Option :none)
-                    Option :some $ decode-map-as raw-color 'String
-                  article-data $ if
-                    =
-                      .unwrap-or (get router :name) nil
-                      , :article
-                    decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
-                    {}
-                div
-                  {} $ :style $ merge
-                    unsafe-coerce ui/global $ :: 'Map 'Tag 'Dynamic
-                    unsafe-coerce ui/fullscreen $ :: 'Map 'Tag 'Dynamic
-                    unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
+            match store
+              (:none) (comp-offline)
+              (:some store-map)
+                let
+                    view $ read-store-view store-map
+                    navigation-view $ :navigation view
+                    logged-in? $ :logged-in? navigation-view
+                    router $ :router view
+                    route-name $ :route-name view
+                    route-data $ :route-data view
+                    paragraph-id $ :paragraph-id view
+                    article? $ option-is? route-name :article
+                    article-data $ if article?
+                      decode-map-as route-data $ :: 'Map 'Tag 'Dynamic
+                      {}
+                    editing-id $ if (and logged-in? article?) paragraph-id $ Option :none
                   div
                     {} $ :style $ merge
-                      unsafe-coerce ui/expand $ :: 'Map 'Tag 'Dynamic
-                      unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
-                    comp-navigation (:logged-in? navigation-view) (:count navigation-view)
-                    if (:logged-in? navigation-view)
-                      match
-                        .unwrap-or (get router :name) nil
-                        :profile $ comp-profile
-                          .unwrap-or (get store-map :user) nil
-                          decode-map-as router-data $ :: 'Map 'Number 'Dynamic
-                        :home $ comp-articles (>> states :articles)
-                          decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
-                        :article $ div
-                          {} $ :style $ merge
-                            unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
-                            unsafe-coerce ui/flex $ :: 'Map 'Tag 'Dynamic
-                          comp-previewer (>> states :previewer)
-                            .unwrap-or (get article-data :article) nil
-                            .unwrap-or (get article-data :focuses) nil
-                            .unwrap-or (get article-data :members) nil
-                            , paragraph-id
-                        _ $ div
-                          {} $ :style ui/flex
-                          <> $ str router
-                      comp-login $ >> states :login
-                  let
-                      visible? $ and (:logged-in? navigation-view) (non-nil? paragraph-id)
-                        = :article $ .unwrap-or (get router :name) nil
-                    comp-editor-panel (>> states :editor) paragraph-id
-                      option:unwrap-or
-                        get-in article-data $ [] :article :paragraphs paragraph-id
-                        {}
-                      , visible?
-                  comp-messages
-                    decode-map-as
-                      option:unwrap-or
-                        get-in store-map $ [] :session :messages
-                        {}
-                      :: 'Map 'String 'Dynamic
-                    {}
-                    fn (info d!)
-                      d! $ :: :session/remove-message info
-                  comp-status-color status-color
-                  when dev? $ comp-inspect |Store store $ {} (:bottom 0) (:right 0) (:max-width |100%)
-                  when dev? $ comp-reel (read-reel-length store-map)
-                    {} (:right 0) (:bottom 40)
+                      unsafe-coerce ui/global $ :: 'Map 'Tag 'Dynamic
+                      unsafe-coerce ui/fullscreen $ :: 'Map 'Tag 'Dynamic
+                      unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
+                    div
+                      {} $ :style $ merge
+                        unsafe-coerce ui/expand $ :: 'Map 'Tag 'Dynamic
+                        unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
+                      comp-navigation logged-in? $ :count navigation-view
+                      if logged-in?
+                        match route-name
+                          (:some name)
+                            match name
+                              :profile $ comp-profile (required-field store-map :user)
+                                decode-map-as route-data $ :: 'Map 'Number 'Dynamic
+                              :home $ comp-articles (>> states :articles)
+                                decode-map-as route-data $ :: 'Map 'Tag 'Dynamic
+                              :article $ div
+                                {} $ :style $ merge
+                                  unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
+                                  unsafe-coerce ui/flex $ :: 'Map 'Tag 'Dynamic
+                                comp-previewer (>> states :previewer) (required-field article-data :article) (required-field article-data :focuses) (required-field article-data :members) paragraph-id
+                              _ $ render-unknown-route router
+                          (:none) (render-unknown-route router)
+                        comp-login $ >> states :login
+                    comp-editor-panel (>> states :editor) editing-id $ match editing-id
+                      (:some editing-key)
+                        option:unwrap-or
+                          get-in article-data $ [] :article :paragraphs editing-key
+                          {}
+                      (:none) ({})
+                    comp-messages (:messages view) ({})
+                      fn (info d!)
+                        d! $ :: :session/remove-message info
+                    comp-status-color $ :color view
+                    when dev? $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
+                    when dev? $ comp-reel (read-reel-length store-map)
+                      {} (:right 0) (:bottom 40)
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic
+            :args $ [] 'Dynamic $ :: 'Option (:: 'Map 'Tag 'Dynamic)
             :features $ #{} :js-ffi
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
@@ -516,13 +507,12 @@
           :code $ quote $ defn read-navigation-view (store)
             let
                 store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
-                raw-count $ .unwrap-or (get store-map :count) nil
               NavigationView :logged-in?
-                decode-map-as
-                  .unwrap-or (get store-map :logged-in?) nil
-                  , 'Bool
-                , :count $ if (nil? raw-count) (Option :none)
-                  Option :some $ decode-map-as raw-count 'Number
+                decode-map-as (required-field store-map :logged-in?) 'Bool
+                , :count $ match (optional-field store-map :count)
+                  (:some raw-count)
+                    Option :some $ decode-map-as raw-count 'Number
+                  (:none) (Option :none)
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.comp.container/NavigationView)
             :args $ [] 'Dynamic
@@ -586,13 +576,9 @@
               :tags $ #{} :navigation-view :unit
         'read-reel-length $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-reel-length (store)
-            decode-map-as
-              .unwrap-or
-                get
-                  decode-map-as store $ :: 'Map 'Tag 'Dynamic
-                  , :reel-length
-                , nil
-              , 'Number
+            let
+                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+              decode-map-as (required-field store-map :reel-length) 'Number
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Number)
             :args $ [] 'Dynamic
@@ -623,6 +609,98 @@
                       :return 'Bool
                     , true
               :tags $ #{} :projection :unit
+        'read-store-view $ %{} 'CodeEntry
+          :doc "|Decode the store map into StoreView. Guests get an empty router; a router without :data gets an empty map."
+          :code $ quote $ defn read-store-view (store)
+            let
+                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                navigation $ read-navigation-view store-map
+                session $ decode-map-as (required-field store-map :session) (:: 'Map 'Tag 'Dynamic)
+                router $ if (:logged-in? navigation)
+                  decode-map-as (required-field store-map :router) (:: 'Map 'Tag 'Dynamic)
+                  {}
+                route-name $ match (optional-field router :name)
+                  (:some raw-name)
+                    Option :some $ decode-map-as raw-name 'Tag
+                  (:none) (Option :none)
+                paragraph-id $ match (optional-field session :paragraph-id)
+                  (:some raw-id)
+                    Option :some $ decode-map-as raw-id 'String
+                  (:none) (Option :none)
+                color $ match (optional-field store-map :color)
+                  (:some raw-color)
+                    Option :some $ decode-map-as raw-color 'String
+                  (:none) (Option :none)
+                messages $ decode-map-as
+                  option:unwrap-or (get session :messages) ({})
+                  :: 'Map 'String 'Dynamic
+              StoreView :navigation navigation :router router :route-name route-name :route-data
+                field-or router :data $ {}
+                , :paragraph-id paragraph-id :color color :messages messages
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.comp.container/StoreView)
+            :args $ [] 'Dynamic
+          :tests $ []
+            %{} 'TestEntry (:name |guest-store-has-empty-router)
+              :code $ quote $ let
+                  view $ read-store-view $ {} (:logged-in? false) (:reel-length 0)
+                    :session $ {} $ :paragraph-id nil
+                assert= false $ :logged-in? $ :navigation view
+                assert= ({}) (:router view)
+                assert= (Option :none) (:route-name view)
+                assert= ({}) (:route-data view)
+                assert= (Option :none) (:paragraph-id view)
+                assert= (Option :none) (:color view)
+                assert= ({}) (:messages view)
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |logged-in-store-decodes-route-and-editing-state)
+              :code $ quote $ let
+                  view $ read-store-view $ {} (:logged-in? true) (:count 2) (:color |#abc)
+                    :session $ {} (:paragraph-id |T)
+                      :messages $ {} $ |m
+                        {} $ :text |hi
+                    :router $ {} (:name :article)
+                      :data $ {} $ :paragraph-id |T
+                assert= (Option :some 2)
+                  :count $ :navigation view
+                assert= (Option :some :article) (:route-name view)
+                assert=
+                  {} $ :paragraph-id |T
+                  :route-data view
+                assert= (Option :some |T) (:paragraph-id view)
+                assert= (Option :some |#abc) (:color view)
+                assert= 1 $ count $ :messages view
+              :tags $ #{} :navigation-view :unit
+            %{} 'TestEntry (:name |rejects-missing-session-and-logged-in-router)
+              :code $ quote $ do
+                assert= true $ try
+                  do
+                    read-store-view $ {} $ :logged-in? false
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+                assert= true $ try
+                  do
+                    read-store-view $ {} (:logged-in? true)
+                      :session $ {}
+                    , false
+                  fn (message)
+                    hint-fn $ {}
+                      :args $ [] 'String
+                      :return 'Bool
+                    , true
+              :tags $ #{} :navigation-view :unit
+        'render-unknown-route $ %{} 'CodeEntry (:doc "|Fallback for a router without a known :name.")
+          :code $ quote $ defn render-unknown-route (router)
+            div
+              {} $ :style ui/flex
+              <> $ str router
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Element)
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
         'style-body $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-body
             {} $ :padding "|8px 16px"
@@ -631,6 +709,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require
+            app.decode :refer $ required-field optional-field field-or option-is?
             hsl.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> div span >> button
@@ -657,17 +736,18 @@
             :on-keydown 'respo.schema/EventHandler
           :examples $ []
           :schema $ :: 'StructDef
-        'comp-editor-panel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-editor-panel (states sort-id paragraph visible?)
+        'comp-editor-panel $ %{} 'CodeEntry
+          :doc "|Editor for the paragraph being edited. editing-id is absent when nothing is edited; the panel then collapses and renders no handlers, so the empty sort-id fallback is never dispatched."
+          :code $ quote $ defcomp comp-editor-panel (states editing-id paragraph)
             let
                 states-map $ decode-map-as states 'Map
                 paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
-                cursor $ .unwrap-or (get states-map :cursor) nil
+                cursor $ required-field states-map :cursor
                 state $ decode-map-as
-                  or
-                    .unwrap-or (get states-map :data) nil
-                    {} (:text |) (:time 0)
+                  field-or states-map :data $ {} (:text |) (:time 0)
                   :: 'Map 'Tag 'Dynamic
+                visible? $ .some? editing-id
+                sort-id $ .unwrap-or editing-id |
                 remove-plugin $ use-confirm (>> states :remove)
                   {}
                     :style $ {} (:cursor :pointer) (:position :absolute) (:right 8) (:color :red)
@@ -713,10 +793,7 @@
                               :args $ [] 'Dynamic
                               :return 'Unit
                           :return 'Unit
-                        when
-                          =
-                            .unwrap-or (get e :keycode) nil
-                            , 27
+                        when (field-is? e :keycode 27)
                           d! $ :: :paragraph/finish-editing sort-id
                         , &unit
                 when visible? $ comp-icon :trash
@@ -739,26 +816,18 @@
                 .render remove-plugin
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Bool
+            :args $ [] 'Dynamic (:: 'Option 'String) 'Dynamic
             :features $ #{} :js-ffi
         'read-editor-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-editor-text (state paragraph)
             let
                 state-map $ decode-map-as state $ :: 'Map 'Tag 'Dynamic
                 paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
-                state-time $ decode-map-as
-                  .unwrap-or (get state-map :time) nil
-                  , 'Number
-                paragraph-time $ decode-map-as
-                  .unwrap-or (get paragraph-map :time) nil
-                  , 'Number
+                state-time $ decode-map-as (required-field state-map :time) 'Number
+                paragraph-time $ decode-map-as (required-field paragraph-map :time) 'Number
               if (> state-time paragraph-time)
-                decode-map-as
-                  .unwrap-or (get state-map :text) nil
-                  , 'String
-                decode-map-as
-                  .unwrap-or (get paragraph-map :content) nil
-                  , 'String
+                decode-map-as (required-field state-map :text) 'String
+                decode-map-as (required-field paragraph-map :content) 'String
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'Dynamic 'Dynamic
@@ -792,6 +861,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.editor-panel
           :require
+            app.decode :refer $ required-field field-or field-is?
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
@@ -921,14 +991,8 @@
           :code $ quote $ defcomp comp-login (states)
             let
                 states-map $ decode-map-as states 'Map
-                cursor $ decode-map-as
-                  .unwrap-or (get states-map :cursor) nil
-                  :: 'List 'Dynamic
-                state $ decode-map-as
-                  or
-                    .unwrap-or (get states-map :data) nil
-                    , initial-state
-                  :: 'Map 'Tag 'Dynamic
+                cursor $ decode-map-as (required-field states-map :cursor) (:: 'List 'Dynamic)
+                state $ decode-map-as (field-or states-map :data initial-state) (:: 'Map 'Tag 'Dynamic)
                 fields $ read-login-fields state
               div
                 {} $ :style $ merge ui/flex ui/center
@@ -978,9 +1042,7 @@
                   :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
                     :args $ [] 'Dynamic
               dispatch! $ :: :states cursor $ assoc state field
-                decode-map-as
-                  .unwrap-or (get event :value) nil
-                  , 'String
+                decode-map-as (required-field event :value) 'String
               , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/EventHandler)
@@ -1056,12 +1118,8 @@
             let
                 state-map $ decode-map-as state $ :: 'Map 'Tag 'Dynamic
               LoginFields :username
-                decode-map-as
-                  .unwrap-or (get state-map :username) nil
-                  , 'String
-                , :password $ decode-map-as
-                  .unwrap-or (get state-map :password) nil
-                  , 'String
+                decode-map-as (required-field state-map :username) 'String
+                , :password $ decode-map-as (required-field state-map :password) 'String
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.comp.login/LoginFields)
             :args $ [] 'Dynamic
@@ -1103,6 +1161,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.login
           :require
+            app.decode :refer $ required-field field-or
             respo.core :refer $ defcomp <> div input button span
             respo.comp.space :refer $ =<
             respo.comp.inspect :refer $ comp-inspect
@@ -1201,8 +1260,7 @@
           :code $ quote $ defn article-text (article)
             let
                 title $ read-article-title article
-                paragraphs $ decode-map-as
-                  .unwrap-or (get article :paragraphs) nil
+                paragraphs $ decode-map-as (required-field article :paragraphs)
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
                 entries $ map-entries paragraphs
                 contents $ -> entries
@@ -1260,8 +1318,7 @@
                 -> focus-records $ .map $ fn (info)
                   let
                       info-map info
-                    []
-                      .unwrap-or (get info-map :sid) nil
+                    [] (required-field info-map :sid)
                       div
                         {} $ :style $ {} (:padding "|0 8px") (:border-radius |16px) (:margin-right 8)
                           :border $ str "|1px solid " $ hsl 0 0 90
@@ -1276,13 +1333,8 @@
         'comp-paragraph $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-paragraph (states sort-id paragraph focus-list focused?)
             let
-                states-map $ decode-map-as states 'Map
                 paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
                 paragraph-text $ read-paragraph-content paragraph
-                cursor $ .unwrap-or (get states-map :cursor) nil
-                state $ or
-                  .unwrap-or (get states-map :data) nil
-                  {} (:text |) (:time 0)
               div
                 ParagraphDropProps :style
                   merge ui/column $ {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
@@ -1406,8 +1458,7 @@
                 focuses-map $ decode-map-as focuses $ :: 'Map 'String
                   :: 'List $ :: 'Map 'Tag 'Dynamic
                 members-map $ decode-map-as members $ :: 'Map 'Number 'Dynamic
-                paragraphs-map $ decode-map-as
-                  .unwrap-or (get article-map :paragraphs) nil
+                paragraphs-map $ decode-map-as (required-field article-map :paragraphs)
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
               div
                 {} $ :style $ merge ui/flex ui/column
@@ -1455,14 +1506,12 @@
                             k $ :key entry
                             paragraph $ :value entry
                           [] k $ comp-paragraph (>> states k) k paragraph
-                            match (get focuses-map k)
-                              (:some lookup-value) lookup-value
-                              (:none) nil
-                            = k sort-id
+                            option:unwrap-or (get focuses-map k) ([])
+                            option-is? sort-id k
                 =< nil 300
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic $ :: 'Option 'String
             :features $ #{} :js-ffi
         'comp-text-viewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-text-viewer (article)
@@ -1516,9 +1565,7 @@
           :code $ quote $ defn read-paragraph-content (value)
             let
                 value-map $ decode-map-as value $ :: 'Map 'Tag 'Dynamic
-              decode-map-as
-                .unwrap-or (get value-map :content) nil
-                , 'String
+              decode-map-as (required-field value-map :content) 'String
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'Dynamic
@@ -1557,6 +1604,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.previewer
           :require
+            app.decode :refer $ required-field option-is?
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
@@ -1586,7 +1634,7 @@
                   {} $ :padding 16
                 div
                   {} $ :style $ {} (:font-family ui/font-fancy) (:font-size 32) (:font-weight 100)
-                  <> $ str "|Hello! " $ .unwrap-or (get user-map :name) nil
+                  <> $ str "|Hello! " $ field-or user-map :name |
                 =< nil 16
                 div
                   {} $ :style ui/row
@@ -1653,6 +1701,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.profile
           :require
+            app.decode :refer $ field-or
             respo-ui.core :refer $ hsl
             app.schema :as schema
             respo-ui.core :as ui
@@ -1688,6 +1737,147 @@
             :tags $ #{} :site-config :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.config
+    'app.decode $ %{} 'FileEntry
+      :defs $ {}
+        'field-is? $ %{} 'CodeEntry
+          :doc "|True when the map holds the key with a value equal to expected; a missing key is never equal."
+          :code $ quote $ defn field-is? (m k expected)
+            option-is? (get m k) expected
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Bool)
+            :args $ [] (:: 'Map 'K 'V) 'K 'V
+            :generics $ [] 'K 'V
+          :tests $ [] $ %{} 'TestEntry (:name |missing-never-matches)
+            :code $ quote $ do
+              assert= true $ field-is?
+                {} $ :kind :patch
+                , :kind :patch
+              assert= false $ field-is?
+                {} $ :kind :other
+                , :kind :patch
+              assert= false $ field-is? ({}) :kind :patch
+              assert= false $ field-is?
+                decode-map-as
+                  {} $ :kind nil
+                  :: 'Map 'Tag 'Dynamic
+                , :kind :patch
+            :tags $ #{} :decode :unit
+        'field-or $ %{} 'CodeEntry
+          :doc "|Read a field that has a natural default: a missing key or an explicit nil value both give the fallback."
+          :code $ quote $ defn field-or (m k fallback)
+            .unwrap-or (optional-field m k) fallback
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'V)
+            :args $ [] (:: 'Map 'K 'V) 'K 'V
+            :generics $ [] 'K 'V
+          :tests $ [] $ %{} 'TestEntry (:name |missing-and-nil-use-default)
+            :code $ quote $ do
+              assert= 1 $ field-or
+                {} $ :a 1
+                , :a 0
+              assert= 0 $ field-or
+                decode-map-as
+                  {} $ :a nil
+                  :: 'Map 'Tag 'Dynamic
+                , :a 0
+              assert= 0 $ field-or ({}) :a 0
+              assert= false $ field-or
+                {} $ :a false
+                , :a true
+            :tags $ #{} :decode :unit
+        'option-is? $ %{} 'CodeEntry
+          :doc "|True when the Option holds a value equal to expected."
+          :code $ quote $ defn option-is? (value expected)
+            match value
+              (:some inner) (= inner expected)
+              (:none) false
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Bool)
+            :args $ [] (:: 'Option 'T) 'T
+            :generics $ [] 'T
+          :tests $ [] $ %{} 'TestEntry (:name |compares-payload)
+            :code $ quote $ do
+              assert= true $ option-is? (Option :some 27) 27
+              assert= false $ option-is? (Option :some 13) 27
+              assert= false $ option-is? (Option :none) 27
+            :tags $ #{} :decode :unit
+        'optional-field $ %{} 'CodeEntry
+          :doc "|Read a field whose absence matters. Untyped server maps encode absence either as a missing key or as an explicit nil value, so both become Option :none."
+          :code $ quote $ defn optional-field (m k)
+            match (get m k)
+              (:some value)
+                if (nil? value) (Option :none) (Option :some value)
+              (:none) (Option :none)
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] (:: 'Map 'K 'V) 'K
+            :generics $ [] 'K 'V
+            :return $ :: 'Option 'V
+          :tests $ [] $ %{} 'TestEntry (:name |missing-and-nil-are-absent)
+            :code $ quote $ do
+              assert= (Option :some 1)
+                optional-field
+                  {} $ :a 1
+                  , :a
+              assert= (Option :some false)
+                optional-field
+                  {} $ :a false
+                  , :a
+              assert= (Option :none)
+                optional-field
+                  {} $ :a nil
+                  , :a
+              assert= (Option :none)
+                optional-field ({}) :a
+            :tags $ #{} :decode :unit
+        'present? $ %{} 'CodeEntry
+          :doc "|True when an Option holds a non-nil value, for Options produced by get/update-in over untyped maps."
+          :code $ quote $ defn present? (value)
+            match value
+              (:some inner) (non-nil? inner)
+              (:none) false
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Bool)
+            :args $ [] $ :: 'Option 'T
+            :generics $ [] 'T
+          :tests $ [] $ %{} 'TestEntry (:name |nil-inside-some-is-not-present)
+            :code $ quote $ do
+              assert= true $ present? $ Option :some |k
+              assert= false $ present? $ Option :some nil
+              assert= false $ present? $ Option :none
+            :tags $ #{} :decode :unit
+        'required-field $ %{} 'CodeEntry
+          :doc "|Read a field the producer always sends. A missing key raises with the field name; a present value, even nil, is returned for the caller to decode."
+          :code $ quote $ defn required-field (m k)
+            match (get m k)
+              (:some value) value
+              (:none)
+                raise $ str "|missing required field " k
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'V)
+            :args $ [] (:: 'Map 'K 'V) 'K
+            :generics $ [] 'K 'V
+          :tests $ [] $ %{} 'TestEntry (:name |present-values-pass-and-missing-raises)
+            :code $ quote $ do
+              assert= 1 $ required-field
+                {} $ :a 1
+                , :a
+              assert= nil $ required-field
+                {} $ :a nil
+                , :a
+              assert= true $ try
+                do
+                  required-field ({}) :a
+                  , false
+                fn (message)
+                  hint-fn $ {}
+                    :args $ [] 'String
+                    :return 'Bool
+                  , true
+            :tags $ #{} :decode :unit
+      :ns $ %{} 'NsEntry
+        :doc "|Field readers for untyped EDN maps crossing the client/server boundary."
+        :code $ quote $ ns app.decode
     'app.ffi.drag $ %{} 'FileEntry
       :defs $ {}
         'DataTransferHost $ %{} 'CodeEntry (:doc |)
@@ -1914,6 +2104,18 @@
             ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
           :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
+        'action-data-from-wire $ %{} 'CodeEntry
+          :doc "|Wire decoder for the op payload sent by app.client/payload-to-wire. Updaters take nil op-data for payload-less ops such as :user/log-out, so a missing :data key decodes to nil as well."
+          :code $ quote $ defn action-data-from-wire (action)
+            .unwrap-or (get action :data) nil
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |payload-or-nil)
+            :code $ quote $ do
+              assert= |p $ action-data-from-wire $ {} (:kind :op) (:data |p)
+              assert= nil $ action-data-from-wire $ {} (:kind :op)
+            :tags $ #{} :input-boundary :unit
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op op-data sid)
             let
@@ -1945,14 +2147,8 @@
             let
                 now $ extract-time $ get-time!
               join-path calcit-dirname |backups
-                str $ match (get now :month)
-                  (:some lookup-value) lookup-value
-                  (:none) nil
-                str
-                  match (get now :day)
-                    (:some lookup-value) lookup-value
-                    (:none) nil
-                  , |-snapshot.cirru
+                str $ required-field now :month
+                str (required-field now :day) |-snapshot.cirru
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ []
@@ -2041,15 +2237,12 @@
                   (:message sid msg)
                     let
                         action $ decode-map-as (parse-cirru-edn msg) (:: 'Map 'Tag 'Dynamic)
-                      match
-                        .unwrap-or (get action :kind) nil
-                        :op $ dispatch!
-                          decode-map-as
-                            .unwrap-or (get action :op) nil
-                            , 'Tag
-                          .unwrap-or (get action :data) nil
+                      if (field-is? action :kind :op)
+                        dispatch!
+                          decode-map-as (required-field action :op) 'Tag
+                          action-data-from-wire action
                           , sid
-                        _ $ println "|unknown action:" action
+                        println "|unknown action:" action
                   (:disconnect sid)
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
@@ -2091,6 +2284,7 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
           :require (app.schema :as schema)
+            app.decode :refer $ required-field field-is?
             app.updater :refer $ updater
             cumulo-reel.core :refer $ reel-reducer refresh-reel reel-schema ReelState
             app.config :as config
@@ -2125,6 +2319,38 @@
             respo-ui.core :as ui
     'app.twig.container $ %{} 'FileEntry
       :defs $ {}
+        'paragraph-id-to-wire $ %{} 'CodeEntry
+          :doc "|Wire encoder: the article route data carries :paragraph-id nil when the session is not editing, matching the session schema."
+          :code $ quote $ defn paragraph-id-to-wire (session-map)
+            .unwrap-or (get session-map :paragraph-id) nil
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
+        'read-session-user-name $ %{} 'CodeEntry
+          :doc "|Name of the user logged in on a session; guests and unknown users are absent."
+          :code $ quote $ defn read-session-user-name (users session-map)
+            match (optional-field session-map :user-id)
+              (:some user-id) (read-user-name users user-id)
+              (:none) (Option :none)
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ []
+              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+              :: 'Map 'Tag 'Dynamic
+            :return $ :: 'Option 'String
+          :tests $ [] $ %{} 'TestEntry (:name |guest-and-member-sessions)
+            :code $ quote $ let
+                users $ {} $ |u
+                  {} $ :name "|用户🐈"
+              assert= (Option :some "|用户🐈")
+                read-session-user-name users $ {} $ :user-id |u
+              assert= (Option :none)
+                read-session-user-name users $ decode-map-as
+                  {} $ :user-id nil
+                  :: 'Map 'Tag 'Dynamic
+              assert= (Option :none)
+                read-session-user-name users $ {}
+            :tags $ #{} :projection :unit
         'read-user-name $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-user-name (users user-id)
             if (nil? user-id) (Option :none)
@@ -2189,44 +2415,47 @@
                 session-map $ decode-map-as
                   option:unwrap-or session $ {}
                   :: 'Map 'Tag 'Dynamic
-                user-id $ .unwrap-or (get session-map :user-id) nil
-                logged-in? $ non-nil? user-id
-                router $ decode-map-as
-                  .unwrap-or (get session-map :router) nil
-                  :: 'Map 'Tag 'Dynamic
-                base-data $ {} (:logged-in? logged-in?) (:session session-map)
+                user-id $ optional-field session-map :user-id
+                router $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                base-data $ {}
+                  :logged-in? $ .some? user-id
+                  :session session-map
                   :reel-length $ count records-list
-                sessions $ decode-map-as
-                  .unwrap-or (get db-map :sessions) nil
+                sessions $ decode-map-as (required-field db-map :sessions)
                   :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
-                users $ decode-map-as
-                  .unwrap-or (get db-map :users) nil
+                users $ decode-map-as (required-field db-map :users)
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
               merge base-data $ decode-map-as
-                if logged-in?
-                  {}
-                    :user $ twig-user $ option:unwrap-or
-                      get-in db-map $ [] :users user-id
-                      {}
-                    :router $ assoc router :data $ match
-                      .unwrap-or (get router :name) nil
-                      :home $ {}
-                        :articles $ twig-articles $ .unwrap-or (get db-map :articles) nil
-                        :focuses $ twig-focuses :article-id sessions users
-                      :article $ let
-                          article-id $ .unwrap-or (get session-map :article-id) nil
+                match user-id
+                  (:some logged-in-id)
+                    {}
+                      :user $ twig-user $ option:unwrap-or
+                        get-in db-map $ [] :users logged-in-id
                         {}
-                          :article $ option:unwrap-or
-                            get-in db-map $ [] :articles article-id
-                            {}
-                          :paragraph-id $ .unwrap-or (get session-map :paragraph-id) nil
-                          :focuses $ twig-focuses :paragraph-id sessions users
-                          :members $ twig-members article-id sessions users
-                      :profile $ twig-profile sessions users
-                      _ $ {}
-                    :count $ count sessions
-                    :color $ rand-hex-color!
-                  {}
+                      :router $ assoc router :data $ match (get router :name)
+                        (:some route-name)
+                          match route-name
+                            :home $ {}
+                              :articles $ twig-articles $ required-field db-map :articles
+                              :focuses $ twig-focuses :article-id sessions users
+                            :article $ let
+                                article-id $ optional-field session-map :article-id
+                              {}
+                                :article $ match article-id
+                                  (:some id)
+                                    option:unwrap-or
+                                      get-in db-map $ [] :articles id
+                                      {}
+                                  (:none) ({})
+                                :paragraph-id $ paragraph-id-to-wire session-map
+                                :focuses $ twig-focuses :paragraph-id sessions users
+                                :members $ twig-members article-id sessions users
+                            :profile $ twig-profile sessions users
+                            _ $ {}
+                        (:none) ({})
+                      :count $ count sessions
+                      :color $ rand-hex-color!
+                  (:none) ({})
                 :: 'Map 'Tag 'Dynamic
           :examples $ []
           :schema $ :: 'Fn $ {}
@@ -2280,13 +2509,10 @@
                   filter-kv sessions-map $ fn (k session)
                     let
                         session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                        router-map $ decode-map-as
-                          .unwrap-or (get session-map :router) nil
-                          :: 'Map 'Tag 'Dynamic
-                      and
-                        = :article $ .unwrap-or (get router-map :name) nil
-                        non-nil? $ .unwrap-or (get session-map :user-id) nil
-                        non-nil? $ .unwrap-or (get session-map router-id) nil
+                        router-map $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                      and (field-is? router-map :name :article)
+                        .some? $ optional-field session-map :user-id
+                        .some? $ optional-field session-map router-id
                   :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
                 result $ -> filtered (map-entries)
                   map $ fn (entry)
@@ -2296,10 +2522,8 @@
                     let
                         k $ :key entry
                         session-map $ :value entry
-                        article-id $ .unwrap-or (get session-map router-id) nil
-                        user-id $ decode-map-as
-                          .unwrap-or (get session-map :user-id) nil
-                          , 'String
+                        article-id $ required-field session-map router-id
+                        user-id $ decode-map-as (required-field session-map :user-id) 'String
                       {} (:id article-id)
                         :name $ option:unwrap-or
                           get-in users-map $ [] user-id :name
@@ -2309,9 +2533,7 @@
                     hint-fn $ {}
                       :args $ [] $ :: 'Map 'Tag 'Dynamic
                       :return 'String
-                    decode-map-as
-                      .unwrap-or (get x :id) nil
-                      , 'String
+                    decode-map-as (required-field x :id) 'String
               , result
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
@@ -2326,23 +2548,17 @@
                     filter-kv sessions-map $ fn (k session)
                       let
                           session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                          router $ decode-map-as
-                            .unwrap-or (get session-map :router) nil
-                            :: 'Map 'Tag 'Dynamic
-                        and
-                          = :article $ .unwrap-or (get router :name) nil
-                          = article-id $ .unwrap-or (get session-map :article-id) nil
+                          router $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                        and (field-is? router :name :article)
+                          = article-id $ optional-field session-map :article-id
                     :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
                 -> filtered $ .map-kv $ fn (k session)
                   let
                       session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                    [] k $ match
-                      read-user-name users-map $ .unwrap-or (get session-map :user-id) nil
-                      (:none) nil
-                      (:some name) name
+                    [] k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic
+            :args $ [] (:: 'Option 'Dynamic) 'Dynamic 'Dynamic
         'twig-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-profile (sessions users)
             let
@@ -2350,25 +2566,30 @@
                 users-map $ decode-map-as users $ :: 'Map 'String (:: 'Map 'Tag 'Dynamic)
                 filtered $ decode-map-as
                   filter-kv sessions-map $ fn (k session)
-                    non-nil? $ .unwrap-or
-                      get
-                        decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                        , :user-id
-                      , nil
+                    .some? $ optional-field
+                      decode-map-as session $ :: 'Map 'Tag 'Dynamic
+                      , :user-id
                   :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
               filter-map-kv filtered $ fn (k session)
                 let
                     session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                  MapEntryDecision :keep k $ match
-                    read-user-name users-map $ .unwrap-or (get session-map :user-id) nil
-                    (:none) nil
-                    (:some name) name
+                  MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic
+        'user-name-to-wire $ %{} 'CodeEntry
+          :doc "|Wire encoder for member/profile maps: the client renders a nil name as an empty span."
+          :code $ quote $ defn user-name-to-wire (user-name)
+            match user-name
+              (:some value) value
+              (:none) nil
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+            :args $ [] $ :: 'Option 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.twig.container
           :require
+            app.decode :refer $ required-field optional-field field-is?
             app.twig.user :refer $ twig-user
             calcit.std.rand :refer $ rand-hex-color!
             app.util :refer $ filter-kv
@@ -2461,10 +2682,8 @@
             let
                 op-map $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
               assoc-in db
-                [] :articles
-                  .unwrap-or (get op-map :id) nil
-                  , :title
-                .unwrap-or (get op-map :title) nil
+                [] :articles (required-field op-map :id) :title
+                required-field op-map :title
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
@@ -2483,7 +2702,8 @@
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.article
-          :require $ app.schema :as schema
+          :require (app.schema :as schema)
+            app.decode :refer $ required-field
     'app.updater.paragraph $ %{} 'FileEntry
       :defs $ {}
         'append-to $ %{} 'CodeEntry (:doc |)
@@ -2582,25 +2802,24 @@
                     get-in db $ [] :articles article-id :paragraphs
                     {}
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-                new-key $ if
-                  > (&str:compare target-key base-key) 0
-                  bisection-util/key-before paragraphs base-key
-                  bisection-util/key-after paragraphs base-key
-                paragraph $ match (get paragraphs target-key)
-                  (:some lookup-value) lookup-value
-                  (:none) nil
-              -> db
-                update-in ([] :articles article-id :paragraphs)
-                  fn (paragraphs)
-                    ->
-                      option:unwrap-or paragraphs $ {}
-                      assoc new-key paragraph
-                      dissoc target-key
-                update-in ([] :sessions sid :paragraph-id)
-                  fn (old-key)
-                    if
-                      non-nil? $ .unwrap-or old-key nil
-                      , new-key nil
+              match (get paragraphs target-key)
+                (:none) db
+                (:some paragraph)
+                  let
+                      new-key $ if
+                        > (&str:compare target-key base-key) 0
+                        bisection-util/key-before paragraphs base-key
+                        bisection-util/key-after paragraphs base-key
+                    -> db
+                      update-in ([] :articles article-id :paragraphs)
+                        fn (paragraphs)
+                          ->
+                            option:unwrap-or paragraphs $ {}
+                            assoc new-key paragraph
+                            dissoc target-key
+                      update-in ([] :sessions sid :paragraph-id)
+                        fn (old-key)
+                          if (present? old-key) new-key nil
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
@@ -2742,18 +2961,19 @@
                   get-in db $ [] :sessions sid :article-id
                   , nil
               update-in db
-                [] :articles article-id :paragraphs $ .unwrap-or (get op-map :id) nil
+                [] :articles article-id :paragraphs $ required-field op-map :id
                 fn (paragraph)
                   ->
                     option:unwrap-or paragraph $ {}
-                    assoc :time $ .unwrap-or (get op-map :time) nil
-                    assoc :content $ .unwrap-or (get op-map :text) nil
+                    assoc :time $ required-field op-map :time
+                    assoc :content $ required-field op-map :text
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Dynamic)
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
           :require (bisection-key.util :as bisection-util) (app.schema :as schema)
+            app.decode :refer $ required-field present?
     'app.updater.router $ %{} 'FileEntry
       :defs $ {} $ 'change
         %{} 'CodeEntry (:doc |)
@@ -2783,9 +3003,7 @@
           :code $ quote $ defn remove-message (db op-data sid op-id op-time)
             let
                 payload $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
-                message-id $ decode-map-as
-                  .unwrap-or (get payload :id) nil
-                  , 'String
+                message-id $ decode-map-as (required-field payload :id) 'String
               update-in db ([] :sessions sid :messages)
                 fn (messages)
                   dissoc
@@ -2867,7 +3085,8 @@
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.session
-          :require $ app.schema :as schema
+          :require (app.schema :as schema)
+            app.decode :refer $ required-field
     'app.updater.user $ %{} 'FileEntry
       :defs $ {}
         'LoginCredentials $ %{} 'CodeEntry (:doc |)
@@ -2886,11 +3105,9 @@
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
                 maybe-user $ -> users (distinct-values) (.to-list)
                   find $ fn (user)
-                    = username $ .unwrap-or
-                      get
-                        decode-map-as user $ :: 'Map 'Tag 'Dynamic
-                        , :name
-                      , nil
+                    field-is?
+                      decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                      , :name username
               update-in db-map ([] :sessions sid)
                 fn (session)
                   let
@@ -2901,9 +3118,8 @@
                       let
                           user-map $ decode-map-as (option:unwrap maybe-user) (:: 'Map 'Tag 'Dynamic)
                         if
-                          = (md5 password)
-                            .unwrap-or (get user-map :password) nil
-                          assoc session-map :user-id $ .unwrap-or (get user-map :id) nil
+                          field-is? user-map :password $ md5 password
+                          assoc session-map :user-id $ required-field user-map :id
                           update session-map :messages $ fn (messages)
                             assoc
                               decode-map-as messages $ :: 'Map 'String 'Dynamic
@@ -2980,11 +3196,9 @@
                 maybe-user $ find
                   .to-list $ distinct-values users
                   fn (user)
-                    = username $ .unwrap-or
-                      get
-                        decode-map-as user $ :: 'Map 'Tag 'Dynamic
-                        , :name
-                      , nil
+                    field-is?
+                      decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                      , :name username
               if (option:some? maybe-user)
                 update-in db-map ([] :sessions sid :messages)
                   fn (messages)
@@ -3003,7 +3217,9 @@
             :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
-          :require $ calcit.std.hash :refer $ md5
+          :require
+            calcit.std.hash :refer $ md5
+            app.decode :refer $ required-field field-is?
     'app.util $ %{} 'FileEntry
       :defs $ {}
         'delay-focus! $ %{} 'CodeEntry (:doc |)
