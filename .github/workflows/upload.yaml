@@ -54,6 +54,10 @@ jobs:
         set -euo pipefail
         calcit calcit.cirru edit format
         git diff --exit-code -- calcit.cirru
+        client_args=()
+        while IFS= read -r namespace; do client_args+=(--ns "$namespace"); done < <(calcit query ns --format json | jq -r '.data.namespaces[] | select(. != "app.server")')
+        calcit calcit.cirru --check-only "${client_args[@]}"
+        calcit calcit.cirru --entry server --check-only --ns app.server
         calcit calcit.cirru --check-only --warn-dyn-method
         calcit calcit.cirru --entry server --check-only --warn-dyn-method
         calcit calcit.cirru fix --workflow strict --verify --format edn

@@ -12,9 +12,11 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
-当前 CLI / `@calcit/procs` 精确配对 0.30.1-alpha.4，并已执行实际运行验收，
-不是只读兼容性探测。前轮已将应用和原测试的底层 Map 读取改为公开 `get` / Option 接口；缺失值仍还原为
-原来的 nil，保留现有 decoder、false、0 和默认值，不新增统一包装或强转。
+当前 CLI / `@calcit/procs` 精确配对 0.30.1-alpha.5。客户端每次渲染将开放 store
+解码一次为 StoreView，组件使用带类型字段或 Option；twig 和 updater 在读取处检查字段。
+false、0 与合法默认值仍保留，wire 和存储格式不变；nil 仅保留在现有协议边界。
+缺失目标段落的移动保持数据库不变，缺少标题/正文必需字段的操作明确报错，避免写入 nil。
+已登录但路由缺少 data 时使用空 Map 渲染；存在的颜色、路由名和段落 ID 会校验类型。
 段落排序使用类型化 `MapEntry` 保留 String key。拖放缺少 target/base 时明确报错；
 同时修复原 `update` 把嵌套 session 路径当单键、移动后未更新编辑光标的问题，
 改用 `update-in` 并处理 Option 输入，Number session key 不变。
@@ -43,6 +45,8 @@ yarn release-page
 
 `yarn watch-page` 显式监听源码变化。生成的 `js-out/`、`dist/`、
 `dist-server/` 和 `.calcit/` 缓存不提交。
+CI 通过官方命名空间查询枚举应用定义：浏览器检查除 app.server 外的全部命名空间，
+native 入口检查 app.server；不要求浏览器加载服务端 WSS。
 
 `calcit.cirru` 是结构化程序，修改前先读取当前 CLI 的 mutation contract，
 用 query 定位，再通过结构化命令和 revision 守卫写入：
@@ -84,11 +88,18 @@ Markdown 高亮回调保持 String 输入和输出。Text 导出通过类型化 
 验收还包括双入口完整 strict、严格依赖图、生产构建、
 隔离 WebSocket 与持久化，以及真实浏览器交互。
 测试使用合成数据库和独立服务，不连接生产存储。
-本轮原有共同测试 native / JS 各 51/51（无排除），server-effect 2/2；
+此前 alpha.4 迁移的原有共同测试 native / JS 各 51/51（无排除），server-effect 2/2；
 完整 strict 无诊断，应用废弃调用为零。真实浏览器双客户端验证登录、
 含 HTML 字面量和 Unicode 的段落修改同步，以及删除 Confirm 的取消、确认和同步。
 隔离 native 服务验证访客 patch、未知消息分支、回调实际 Unit、断连、持久化及 SIGINT 正常退出。
 Dynamic / unsafe 数量基线已退役，不以统计预算代替类型和业务语义门槛。
+
+alpha.5 复验覆盖全部 28 个应用命名空间（浏览器 115、native server 16 个定义）、
+双入口 strict、共同原生测试 63/63、server-effect 2/2、不可变依赖安装和生产构建。
+其中浏览器/共享命名空间的 62 项测试也在生成 JS 回放中通过，断言和日志与 native 一致；
+Node 回放使用临时宿主初始化适配，不等于真实 DOM 验收。app.server 的 1 项 wire 测试
+及 2 项 effect 测试仅计为 native 通过，不替换原生 FFI 以制造 JS 通过结果。
+这些结果不替代上述 alpha.4 双客户端与持久化验收，也不证明服务器已升级。
 
 ## 部署
 
@@ -105,7 +116,7 @@ calcit calcit.cirru --entry server
 
 ## 限制
 
-- 0.30.1 尚未正式发布，当前明确固定 alpha.4；服务端也必须安装匹配 CLI 与模块，
+- 正式 0.30.1 tag 已发布，但 CLI assets 和 npm runtime 尚未齐备，当前固定配对 alpha.5；服务端也必须安装匹配 CLI 与模块，
   不能只升级网页后继续运行旧服务。服务器准备情况未确认，本 PR 不触发生产合并部署。
 - Text 导出的排序、标题和 Unicode 原断言通过，但本地浏览器点击后未暴露可读取的弹窗，
   完整弹窗内容与 HTML 转义的浏览器验收仍未完成，不计作通过。
