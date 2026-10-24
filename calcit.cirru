@@ -6,7 +6,7 @@
     :default $ {} (:description |) (:init-fn 'app.client/main!) (:mode :js) (:reload-fn 'app.client/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |recollect/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |bisection-key/ |respo-feather.calcit/ |respo-markdown.calcit/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op |app.schema/Op
     :server $ {} (:description |) (:init-fn 'app.server/main!) (:mode :native) (:reload-fn 'app.server/reload!) (:target :native)
       :feature-policy $ {}
       :modules $ [] |recollect/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |bisection-key/ |calcit.std/ |calcit-wss/
@@ -68,7 +68,7 @@
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Enum
+            :args $ [] 'app.schema/Op
             :features $ #{} :js-ffi
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
@@ -172,11 +172,7 @@
               comp-container
                 .unwrap-or (get @*states :states) ({})
                 , @*store
-              fn (value)
-                hint-fn $ {}
-                  :args $ [] 'Dynamic
-                  :return 'Unit
-                dispatch! $ schema/read-dispatch-operation value
+              , dispatch!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ []
@@ -250,17 +246,39 @@
                         :color $ hsl 200 80 70
                         :cursor :pointer
                       fn (e d!)
-                        .show edit-plugin d! $ fn (result) (println "|as result:" result)
-                          when
-                            not $ blank? $ decode-map-as result 'String
-                            d! $ :: :article/title $ {} (:id article-id) (:title result)
+                        hint-fn $ {} (:return 'Unit)
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
+                        .show edit-plugin (alert-dispatch d!)
+                          fn (result)
+                            hint-fn $ {}
+                              :args $ [] 'Dynamic
+                              :return 'Unit
+                            println "|as result:" result
+                            when
+                              not $ blank? $ decode-map-as result 'String
+                              d! $ :: :article/title $ {} (:id article-id) (:title result)
+                            , &unit
+                        , &unit
                     =< 16 nil
                     comp-icon :trash
                       {} (:font-size 14)
                         :color $ hsl 200 80 70
                         :cursor :pointer
                       fn (e d!)
-                        .show remove-plugin d! $ fn () $ d! (:: :article/remove-one article-id)
+                        hint-fn $ {} (:return 'Unit)
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
+                        .show remove-plugin (alert-dispatch d!)
+                          fn ()
+                            hint-fn $ {}
+                              :args $ []
+                              :return 'Unit
+                            d! $ :: :article/remove-one article-id
+                            , &unit
+                        , &unit
                 div
                   {} $ :style $ {}
                     :color $ hsl 0 0 80
@@ -323,10 +341,20 @@
                     {}
                       :style $ merge style/button $ {} (:padding "|4px 16px")
                       :on-click $ fn (e d!)
-                        .show create-plugin d! $ fn (result)
-                          when
-                            not $ blank? $ decode-map-as result 'String
-                            d! $ :: :article/create result
+                        hint-fn $ {} (:return 'Unit)
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {} (:return 'Unit)
+                              :args $ [] *dispatch-op
+                        .show create-plugin (alert-dispatch d!)
+                          fn (result)
+                            hint-fn $ {}
+                              :args $ [] 'Dynamic
+                              :return 'Unit
+                            when
+                              not $ blank? $ decode-map-as result 'String
+                              d! $ :: :article/create result
+                            , &unit
+                        , &unit
                     <> "|Create Article"
                 .render create-plugin
           :examples $ []
@@ -400,6 +428,7 @@
             app.style :as style
             respo-alerts.core :refer $ use-confirm use-prompt
             feather.core :refer $ comp-icon comp-i
+            app.util :refer $ alert-dispatch
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
         'NavigationView $ %{} 'CodeEntry (:doc |)
@@ -464,7 +493,7 @@
                         comp-login $ >> states :login
                     comp-editor-panel (>> states :editor) editing-id $ match editing-id
                       (:some editing-key)
-                        option:unwrap-or
+                        result:unwrap-or
                           get-in article-data $ [] :article :paragraphs editing-key
                           {}
                       (:none) ({})
@@ -760,59 +789,66 @@
                     :border-top $ str "|1px solid " $ hsl 0 0 90
                     :padding $ if visible? 8 0
                     :padding-left $ if visible? 88 false
-                when visible? $ div
-                  {} $ :style $ merge ui/flex ui/column
-                    {} (:max-width 960) (:width |100%) (:margin :auto)
-                  comp-editor-toolbar states sort-id
-                  =< nil 8
-                  textarea $ EditorInputProps :style
-                    merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
-                      :border $ str "|1px solid " $ hsl 240 80 90
-                      :background-color $ hsl 0 0 100
-                    , :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
+                match editing-id
+                  (:some _editing)
+                    div
+                      {} $ :style $ merge ui/flex ui/column
+                        {} (:max-width 960) (:width |100%) (:margin :auto)
+                      comp-editor-toolbar states sort-id
+                      =< nil 8
+                      textarea $ EditorInputProps :style
+                        merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
+                          :border $ str "|1px solid " $ hsl 240 80 90
+                          :background-color $ hsl 0 0 100
+                        , :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
+                          fn (e d!)
+                            hint-fn $ {}
+                              :args $ [] (:: 'Map 'Tag 'Dynamic)
+                                :: 'Fn $ {}
+                                  :args $ [] *dispatch-op
+                                  :return 'Unit
+                              :return 'Unit
+                            let
+                                timestamp $ decode-map-as (js/Date.now) 'Number
+                                value $ decode-map-as
+                                  .unwrap $ get e :value
+                                  , 'String
+                                state-cursor $ decode-map-as cursor $ :: 'List 'Dynamic
+                              d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
+                              d! $ :: :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
+                              , &unit
+                          , :on-keydown $ fn (e d!)
+                            hint-fn $ {}
+                              :args $ [] (:: 'Map 'Tag 'Dynamic)
+                                :: 'Fn $ {}
+                                  :args $ [] *dispatch-op
+                                  :return 'Unit
+                              :return 'Unit
+                            when (field-is? e :keycode 27)
+                              d! $ :: :paragraph/finish-editing sort-id
+                            , &unit
+                  (:none) nil
+                match editing-id
+                  (:some _editing)
+                    comp-icon :trash
+                      {} (:font-size 14) (:cursor :pointer)
+                        :color $ hsl 200 80 70
                       fn (e d!)
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
                             :: 'Fn $ {}
-                              :args $ [] 'Dynamic
+                              :args $ [] *dispatch-op
                               :return 'Unit
                           :return 'Unit
-                        let
-                            timestamp $ decode-map-as (js/Date.now) 'Number
-                            value $ decode-map-as
-                              .unwrap $ get e :value
-                              , 'String
-                            state-cursor $ decode-map-as cursor $ :: 'List 'Dynamic
-                          d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
-                          d! $ :: :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
-                          , &unit
-                      , :on-keydown $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
+                        .show remove-plugin (alert-dispatch d!)
+                          fn ()
+                            hint-fn $ {}
+                              :args $ []
                               :return 'Unit
-                          :return 'Unit
-                        when (field-is? e :keycode 27)
-                          d! $ :: :paragraph/finish-editing sort-id
+                            d! $ :: :paragraph/remove sort-id
+                            , &unit
                         , &unit
-                when visible? $ comp-icon :trash
-                  {} (:font-size 14) (:cursor :pointer)
-                    :color $ hsl 200 80 70
-                  fn (e d!)
-                    hint-fn $ {}
-                      :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {}
-                          :args $ [] 'Dynamic
-                          :return 'Unit
-                      :return 'Unit
-                    .show remove-plugin d! $ fn ()
-                      hint-fn $ {}
-                        :args $ []
-                        :return 'Unit
-                      d! $ :: :paragraph/remove sort-id
-                      , &unit
-                    , &unit
+                  (:none) nil
                 .render remove-plugin
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
@@ -871,6 +907,7 @@
             app.comp.editor-toolbar :refer $ comp-editor-toolbar
             respo-alerts.core :refer $ use-confirm
             feather.core :refer $ comp-i comp-icon
+            app.util :refer $ alert-dispatch
     'app.comp.editor-toolbar $ %{} 'FileEntry
       :defs $ {}
         'ToolbarCloseProps $ %{} 'CodeEntry (:doc |)
@@ -894,8 +931,8 @@
                 , :draggable true :on-dragstart $ fn (e d!)
                   hint-fn $ {} (:return 'Unit)
                     :args $ [] (:: 'Map 'Tag 'Dynamic)
-                      :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                        :args $ [] 'Dynamic
+                      :: 'Fn $ {} (:return 'Unit)
+                        :args $ [] *dispatch-op
                   let
                       event $ unsafe-coerce
                         option:unwrap-or (get e :event) (js-object)
@@ -923,8 +960,8 @@
               fn (event dispatch!)
                 hint-fn $ {} (:return 'Unit)
                   :args $ [] (:: 'Map 'Tag 'Dynamic)
-                    :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                      :args $ [] 'Dynamic
+                    :: 'Fn $ {} (:return 'Unit)
+                      :args $ [] *dispatch-op
                 dispatch! $ :: :paragraph/finish-editing paragraph-key
                 dispatch! $ :: :states cursor nil
                 , &unit
@@ -940,12 +977,10 @@
                     , |c32
                   calls $ ref 0
                 assert= &unit $ handler ({})
-                  fn (op & extra-args)
+                  fn (op)
                     hint-fn $ {}
-                      :args $ [] 'Dynamic
-                      :rest 'Dynamic
+                      :args $ [] *dispatch-op
                       :return 'Unit
-                    assert= ([]) extra-args
                     assert=
                       if
                         = (deref calls) 0
@@ -1039,8 +1074,8 @@
             fn (event dispatch!)
               hint-fn $ {} (:return 'Unit)
                 :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                    :args $ [] 'Dynamic
+                  :: 'Fn $ {} (:return 'Unit)
+                    :args $ [] *dispatch-op
               dispatch! $ :: :states cursor $ assoc state field
                 decode-map-as (required-field event :value) 'String
               , &unit
@@ -1056,12 +1091,10 @@
                   calls $ ref 0
                 assert= &unit $ handler
                   {} $ :value "|用户🌱"
-                  fn (op & extra-args)
+                  fn (op)
                     hint-fn $ {}
-                      :args $ [] 'Dynamic
+                      :args $ [] *dispatch-op
                       :return 'Unit
-                      :rest 'Dynamic
-                    assert= ([]) extra-args
                     assert=
                       :: :states cursor $ assoc state :username "|用户🌱"
                       , op
@@ -1080,12 +1113,10 @@
                   do
                     handler
                       {} $ :value 9
-                      fn (op & extra-args)
+                      fn (op)
                         hint-fn $ {}
-                          :args $ [] 'Dynamic
+                          :args $ [] *dispatch-op
                           :return 'Unit
-                          :rest 'Dynamic
-                        assert= ([]) extra-args
                         reset! calls $ inc $ deref calls
                         , &unit
                     , false
@@ -1101,11 +1132,11 @@
             fn (e dispatch!)
               hint-fn $ {} (:return 'Unit)
                 :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:rest 'Dynamic) (:return 'Unit)
-                    :args $ [] 'Dynamic
-              dispatch! $ if signup?
-                :: :user/sign-up $ [] username password
-                :: :user/log-in $ [] username password
+                  :: 'Fn $ {} (:return 'Unit)
+                    :args $ [] *dispatch-op
+              if signup?
+                dispatch! $ :: :user/sign-up $ [] username password
+                dispatch! $ :: :user/log-in $ [] username password
               storage-set! (:storage-key config/site)
                 format-cirru-edn $ [] username password
               , &unit
@@ -1194,7 +1225,7 @@
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
                           :: 'Fn $ {}
-                            :args $ [] 'Dynamic
+                            :args $ [] *dispatch-op
                             :return 'Unit
                         :return 'Unit
                       d! $ :: :router/change $ {} (:name :home)
@@ -1210,7 +1241,7 @@
                     hint-fn $ {}
                       :args $ [] (:: 'Map 'Tag 'Dynamic)
                         :: 'Fn $ {}
-                          :args $ [] 'Dynamic
+                          :args $ [] *dispatch-op
                           :return 'Unit
                       :return 'Unit
                     d! $ :: :router/change $ {} (:name :profile)
@@ -1344,8 +1375,7 @@
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
                           :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :rest 'Dynamic
+                            :args $ [] *dispatch-op
                             :return 'Unit
                         :return 'Unit
                       let
@@ -1363,8 +1393,7 @@
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
                             :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :rest 'Dynamic
+                              :args $ [] *dispatch-op
                               :return 'Unit
                           :return 'Unit
                         let
@@ -1377,8 +1406,7 @@
                         hint-fn $ {}
                           :args $ [] (:: 'Map 'Tag 'Dynamic)
                             :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :rest 'Dynamic
+                              :args $ [] *dispatch-op
                               :return 'Unit
                           :return 'Unit
                         let
@@ -1410,8 +1438,7 @@
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
                           :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :rest 'Dynamic
+                            :args $ [] *dispatch-op
                             :return 'Unit
                         :return 'Unit
                       let
@@ -1956,6 +1983,30 @@
         :code $ quote $ ns app.ffi.url
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'Op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum Op
+            :states (:: 'List 'Dynamic) 'Dynamic
+            :effect/connect 'Dynamic
+            :session/connect 'Dynamic
+            :session/disconnect 'Dynamic
+            :session/remove-message 'Dynamic
+            :session/view-article 'Dynamic
+            :user/log-in 'Dynamic
+            :user/sign-up 'Dynamic
+            :user/log-out 'Dynamic
+            :router/change 'Dynamic
+            :paragraph/prepend 'Dynamic
+            :paragraph/append-to 'Dynamic
+            :paragraph/content 'Dynamic
+            :paragraph/remove 'Dynamic
+            :paragraph/move 'Dynamic
+            :paragraph/edit 'Dynamic
+            :paragraph/finish-editing 'Dynamic
+            :article/create 'Dynamic
+            :article/remove-one 'Dynamic
+            :article/title 'Dynamic
+          :examples $ []
+          :schema $ :: 'EnumDef
         'article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def article
             {} (:id nil)
@@ -2263,7 +2314,10 @@
                   reel-state $ unsafe-coerce reel 'cumulo-reel.core/ReelState
                   db $ :db reel-state
                   records $ :records reel-state
-                  session $ get-in db $ [] :sessions sid
+                  session $ match
+                    get-in db $ [] :sessions sid
+                    (:ok s) (Option :some s)
+                    (:err _e) (Option :none)
                   old-store $ match (get @*client-caches sid)
                     (:some previous-store) previous-store
                     (:none) nil
@@ -2358,8 +2412,8 @@
                   id $ decode-map-as user-id 'String
                 match
                   get-in users $ [] id :name
-                  (:none) (Option :none)
-                  (:some value)
+                  (:err _e) (Option :none)
+                  (:ok value)
                     Option :some $ decode-map-as value 'String
           :examples $ []
           :schema $ :: 'Fn $ {}
@@ -2429,7 +2483,7 @@
                 match user-id
                   (:some logged-in-id)
                     {}
-                      :user $ twig-user $ option:unwrap-or
+                      :user $ twig-user $ result:unwrap-or
                         get-in db-map $ [] :users logged-in-id
                         {}
                       :router $ assoc router :data $ match (get router :name)
@@ -2443,7 +2497,7 @@
                               {}
                                 :article $ match article-id
                                   (:some id)
-                                    option:unwrap-or
+                                    result:unwrap-or
                                       get-in db-map $ [] :articles id
                                       {}
                                   (:none) ({})
@@ -2525,7 +2579,7 @@
                         article-id $ required-field session-map router-id
                         user-id $ decode-map-as (required-field session-map :user-id) 'String
                       {} (:id article-id)
-                        :name $ option:unwrap-or
+                        :name $ result:unwrap-or
                           get-in users-map $ [] user-id :name
                           , nil
                         :sid k
@@ -2710,11 +2764,11 @@
           :code $ quote $ defn append-to (db op-data sid op-id op-time)
             let
                 base-key $ decode-map-as op-data 'String
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
                 paragraphs $ decode-map-as
-                  option:unwrap-or
+                  result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
@@ -2754,21 +2808,31 @@
                     :articles $ {} $ |a
                       {} $ :paragraphs $ {} (base-key original)
                   next-db $ append-to db base-key 7 |new-id 42
-                  new-key $ option:unwrap $ get-in next-db ([] :sessions 7 :paragraph-id)
-                  paragraphs $ option:unwrap $ get-in next-db ([] :articles |a :paragraphs)
+                  new-key $ result:unwrap-or
+                    get-in next-db $ [] :sessions 7 :paragraph-id
+                    , nil
+                  paragraphs $ result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs
+                    , nil
                   paragraphs-map $ decode-map-as paragraphs $ :: 'Map 'String 'Dynamic
                 assert= 2 $ count paragraphs-map
-                assert= original $ option:unwrap $ get-in next-db ([] :articles |a :paragraphs base-key)
+                assert= original $ result:unwrap-or
+                  get-in next-db $ [] :articles |a :paragraphs base-key
+                  , nil
                 assert= false $ = base-key new-key
                 assert=
                   {} (:id |new-id) (:time 42) (:content |)
-                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs new-key
-                assert= original $ option:unwrap $ get-in db ([] :articles |a :paragraphs base-key)
+                  result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs new-key
+                    , nil
+                assert= original $ result:unwrap-or
+                  get-in db $ [] :articles |a :paragraphs base-key
+                  , nil
               :tags $ #{} :business :unit
         'edit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn edit (db op-data sid op-id op-time)
             let
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
                 paragraph-id op-data
@@ -2794,11 +2858,11 @@
                 base-key $ match (get op-map :base)
                   (:some lookup-value) lookup-value
                   (:none) (raise "|paragraph move requires :base")
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
                 paragraphs $ decode-map-as
-                  option:unwrap-or
+                  result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
@@ -2838,11 +2902,11 @@
                   , 7 |move-op 1
                 paragraphs $ decode-map-as
                     get-in next-db $ [] :articles |article :paragraphs
-                    , .unwrap
+                    , .unwrap-or nil
                   :: 'Map 'String 'Dynamic
                 cursor $ decode-map-as
                     get-in next-db $ [] :sessions 7 :paragraph-id
-                    , .unwrap
+                    , .unwrap-or nil
                   , 'String
                 rejected? $ fn (payload)
                   try
@@ -2852,21 +2916,21 @@
               assert= false $ paragraphs.contains-key? |b
               assert= |second $
                 get-in paragraphs $ [] cursor :content
-                , .unwrap
+                , .unwrap-or nil
               assert= |first $
                 get-in paragraphs $ [] |a :content
-                , .unwrap
+                , .unwrap-or nil
               assert= true $ rejected? $ {} (:base |a)
               assert= true $ rejected? $ {} (:target |b)
             :tags $ #{} :business :unit
         'para-prepend $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn para-prepend (db op-data sid op-id op-time)
             let
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
                 paragraphs $ decode-map-as
-                  option:unwrap-or
+                  result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
                   :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
@@ -2884,7 +2948,7 @@
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             let
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
               -> db
@@ -2911,18 +2975,27 @@
                   next-db $ remove-one db |T 7 |operation-id 42
                 assert= nil $ match
                   get
-                    option:unwrap $ get-in next-db $ [] :sessions 7
+                    result:unwrap-or
+                      get-in next-db $ [] :sessions 7
+                      , nil
                     , :paragraph-id
                   (:some lookup-value) lookup-value
                   (:none) nil
                 assert=
-                  option:unwrap $ get-in db $ [] :articles |a :paragraphs |g
-                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs |g
-                assert= |T $ option:unwrap $ get-in db ([] :sessions 7 :paragraph-id)
-                assert= (Option :none)
-                  get-in next-db $ [] :articles |a :paragraphs |T
+                  result:unwrap-or
+                    get-in db $ [] :articles |a :paragraphs |g
+                    , nil
+                  result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs |g
+                    , nil
+                assert= |T $ result:unwrap-or
+                  get-in db $ [] :sessions 7 :paragraph-id
+                  , nil
+                assert= true $ .err? $ get-in next-db ([] :articles |a :paragraphs |T)
                 assert= true $ contains?
-                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  result:unwrap-or
+                    get-in next-db $ [] :sessions 7
+                    , nil
                   , :paragraph-id
               :tags $ #{} :business :unit
             %{} 'TestEntry
@@ -2938,26 +3011,40 @@
                   next-db $ remove-one db |absent 7 |operation-id 42
                 assert= nil $ match
                   get
-                    option:unwrap $ get-in next-db $ [] :sessions 7
+                    result:unwrap-or
+                      get-in next-db $ [] :sessions 7
+                      , nil
                     , :paragraph-id
                   (:some lookup-value) lookup-value
                   (:none) nil
                 assert=
-                  option:unwrap $ get-in db $ [] :articles |a :paragraphs |g
-                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs |g
-                assert= |T $ option:unwrap $ get-in db ([] :sessions 7 :paragraph-id)
+                  result:unwrap-or
+                    get-in db $ [] :articles |a :paragraphs |g
+                    , nil
+                  result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs |g
+                    , nil
+                assert= |T $ result:unwrap-or
+                  get-in db $ [] :sessions 7 :paragraph-id
+                  , nil
                 assert=
-                  option:unwrap $ get-in db $ [] :articles |a :paragraphs
-                  option:unwrap $ get-in next-db $ [] :articles |a :paragraphs
+                  result:unwrap-or
+                    get-in db $ [] :articles |a :paragraphs
+                    , nil
+                  result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs
+                    , nil
                 assert= true $ contains?
-                  option:unwrap $ get-in next-db $ [] :sessions 7
+                  result:unwrap-or
+                    get-in next-db $ [] :sessions 7
+                    , nil
                   , :paragraph-id
               :tags $ #{} :business :unit
         'update-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn update-content (db op-data sid op-id op-time)
             let
                 op-map $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
-                article-id $ option:unwrap-or
+                article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
               update-in db
@@ -3222,6 +3309,27 @@
             app.decode :refer $ required-field field-is?
     'app.util $ %{} 'FileEntry
       :defs $ {}
+        'alert-dispatch $ %{} 'CodeEntry
+          :doc "|Adapts the app dispatch to the Enum callback that respo-alerts plugins call; alerts only emit :states."
+          :code $ quote $ defn alert-dispatch (d!)
+            fn (op)
+              hint-fn $ {}
+                :args $ [] 'Enum
+                :return 'Unit
+              match op
+                (:states cursor state)
+                  d! $ :: :states
+                    decode-map-as cursor $ :: 'List 'Dynamic
+                    , state
+                _ $ eprintln "|Unexpected op from alerts:" op
+              , &unit
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] $ :: 'Fn
+              {} (:return 'Unit)
+                :args $ [] '*dispatch-op
+            :return $ :: 'Fn $ {} (:return 'Unit)
+              :args $ [] 'Enum
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
             set-timeout!
