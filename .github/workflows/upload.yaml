@@ -85,7 +85,7 @@ jobs:
     - name: Build web and server artifacts
       run: |
         set -euo pipefail
-        calcit calcit.cirru js
+        calcit --timeout 0 calcit.cirru js
         yarn vite build --base="$VITE_BASE_URL"
         mkdir -p dist-server
         cp calcit.cirru deps.cirru package.json dist-server/
