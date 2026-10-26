@@ -2311,7 +2311,7 @@
           :code $ quote $ defn sync-clients! (reel) (begin-twig-frame!)
             wss-each! $ fn (sid)
               let
-                  reel-state $ unsafe-coerce reel 'cumulo-reel.core/ReelState
+                  reel-state reel
                   db $ :db reel-state
                   records $ :records reel-state
                   session $ match
@@ -2333,7 +2333,7 @@
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+            :args $ [] $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
             :features $ #{} :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
