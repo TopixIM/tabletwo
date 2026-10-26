@@ -12,7 +12,8 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
-当前 CLI / `@calcit/procs` 精确配对 0.31.0-alpha.6。客户端每次渲染将开放 store
+当前 CLI / `@calcit/procs` 精确配对 0.31.0-alpha.7。本次只更新工具链配对，
+保留已合并的服务端 ReelState 参数修复及 npm 依赖更新。客户端每次渲染将开放 store
 解码一次为 StoreView，组件使用带类型字段或 Option；twig 和 updater 在读取处检查字段。
 false、0 与合法默认值仍保留，wire 和存储格式不变；nil 仅保留在现有协议边界。
 缺失目标段落的移动保持数据库不变，缺少标题/正文必需字段的操作明确报错，避免写入 nil。
