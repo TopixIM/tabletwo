@@ -734,7 +734,7 @@
           :code $ quote $ def style-body
             {} $ :padding "|8px 16px"
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Map 'Tag 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require
@@ -1068,7 +1068,7 @@
           :code $ quote $ def initial-state
             {} (:username |) (:password |)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Map 'Tag 'String
         'on-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-input (cursor state field)
             fn (event dispatch!)
@@ -1627,7 +1627,7 @@
           :code $ quote $ def supprted-langs
             {} (|clojure |clojure) (|javascript |javascript) (|js |javascript) (|bash |bash)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Map 'String 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.previewer
           :require
@@ -1747,7 +1747,7 @@
           :code $ quote $ def dev?
             = |dev $ option:unwrap-or (get-env |mode) |release
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             SiteConfig :port 11003 :title |Table2 :icon |http://cdn.tiye.me/logo/topix.png :theme |#eeeeff :storage-key |table2 :storage-file |storage.cirru
@@ -2306,7 +2306,7 @@
               str calcit-dirname $ :storage-file config/site
               str calcit-dirname |/ $ :storage-file config/site
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ :: 'String
         'sync-clients! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sync-clients! (reel) (begin-twig-frame!)
             wss-each! $ fn (sid)
