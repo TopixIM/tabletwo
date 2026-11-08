@@ -6,7 +6,7 @@
     :default $ {} (:description |) (:init-fn 'app.client/main!) (:mode :js) (:reload-fn 'app.client/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |recollect/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |bisection-key/ |respo-feather.calcit/ |respo-markdown.calcit/
-      :type-slots $ {} $ :dispatch-op |app.schema/Op
+      :type-slots $ {} $ :dispatch-op 'app.schema/Op
     :server $ {} (:description |) (:init-fn 'app.server/main!) (:mode :native) (:reload-fn 'app.server/reload!) (:target :native)
       :feature-policy $ {}
       :modules $ [] |recollect/ |cumulo-util.calcit/ |cumulo-reel.calcit/ |bisection-key/ |calcit.std/ |calcit-wss/
@@ -19,11 +19,12 @@
             {} $ :states $ {}
               :cursor $ []
           :examples $ []
-          :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Ref (Map Tag Dynamic)
         '*store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *store (Option :none)
           :examples $ []
-          :schema $ :: 'Ref $ :: 'Option (:: 'Map 'Tag 'Dynamic)
+          :schema $ quote $ Ref
+            Option $ Map Tag Dynamic
         'connect! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn connect! ()
             let
@@ -44,32 +45,22 @@
                     js/console.error |Disconnected
                   :on-data on-server-data
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'ws-edn.client/WsClient)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :js-ffi)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (action)
-            let
-                op $ &enum:nth action 0
-                params $ &enum:params action
-                data $ if (= op :states) params $ payload-to-wire params
-              when
-                and config/dev? $ not= op :states
-                println |Dispatch op data
-              match op
-                :states $ let[] (cursor s) params $ reset! *states
-                  decode-map-as
-                    update-states @*states
-                      decode-map-as cursor $ :: 'List 'Dynamic
-                      , s
-                    :: 'Map 'Tag 'Dynamic
-                :effect/connect $ do (connect!) &unit
-                _ $ ws-send! $ {} (:kind :op) (:op op) (:data data)
+            when
+              and config/dev? $ not= (&enum:nth action 0) :states
+              println |Dispatch action
+            match action
+              (:states cursor state)
+                reset! *states $ decode-map-as (update-states @*states cursor state) (Map Tag Dynamic)
+              (:effect/connect) (connect!)
+              _ $ ws-send! $ {} (:kind :op)
+                :op $ &enum:nth action 0
+                :data $ payload-to-wire $ &enum:params action
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'app.schema/Op
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn app.schema/Op (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             let
@@ -81,38 +72,31 @@
               render-app!
               connect!
               add-watch! *store :changes $ fn (store prev)
-                hint-fn $ {}
-                  :args $ []
-                    :: 'Option $ :: 'Map 'Tag 'Dynamic
-                    :: 'Option $ :: 'Map 'Tag 'Dynamic
-                  :return 'Unit
+                hint-fn $ Fn
+                  Option $ Map Tag Dynamic
+                  Option $ Map Tag Dynamic
+                  -> Unit
                 render-app!
               add-watch! *states :changes $ fn (states pre)
-                hint-fn $ {}
-                  :args $ [] (:: 'Map 'Tag 'Dynamic) (:: 'Map 'Tag 'Dynamic)
-                  :return 'Unit
+                hint-fn $ Fn (Map Tag Dynamic) (Map Tag Dynamic) (-> Unit)
                 render-app!
               on-page-touch $ fn ()
-                hint-fn $ {}
-                  :args $ []
-                  :return 'Unit
+                hint-fn $ Fn $ -> Unit
                 if (.none? @*store) (connect!)
                 , &unit
               println |App-started!
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
             option:unwrap $ query-selector |.app
           :examples $ []
-          :schema $ :: 'respo.dom/DomElement
+          :schema $ quote respo.dom/DomElement
         'on-server-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-server-data (data)
             let
-                data-map $ decode-map-as data $ :: 'Map 'Tag 'Dynamic
+                data-map $ decode-map-as data $ Map Tag Dynamic
               if (field-is? data-map :kind :patch)
                 let
                     changes $ required-field data-map :data
@@ -122,21 +106,18 @@
                         (:some previous-store) previous-store
                         (:none) nil
                       next-value $ patch-twig base $ schema/read-patch-changes changes
-                      next-store $ decode-map-as next-value $ :: 'Map 'Tag 'Dynamic
+                      next-store $ decode-map-as next-value $ Map Tag Dynamic
                     reset! *store $ Option :some next-store
                 js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi)
         'payload-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder for an action payload. An action without parameters is sent as :data nil; the server decodes it back with action-data-from-wire, and updaters treat nil op-data as no payload."
           :code $ quote $ defn payload-to-wire (params)
-            option:unwrap-or (first params) nil
+            app.decode/optional-wire $ first params
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] $ :: 'List 'Dynamic
+          :schema $ quote $ Fn (List T) (-> Dynamic) (:generics T)
           :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
             :code $ quote $ do
               assert= |a $ payload-to-wire $ [] |a |b
@@ -149,23 +130,18 @@
               hud! |error $ str client-errors &newline server-errors
               do (hud! |inactive nil) (remove-watch! *store :changes) (remove-watch! *states :changes) (clear-cache!) (render-app!)
                 add-watch! *store :changes $ fn (store prev)
-                  hint-fn $ {}
-                    :args $ []
-                      :: 'Option $ :: 'Map 'Tag 'Dynamic
-                      :: 'Option $ :: 'Map 'Tag 'Dynamic
-                    :return 'Unit
+                  hint-fn $ Fn
+                    Option $ Map Tag Dynamic
+                    Option $ Map Tag Dynamic
+                    -> Unit
                   render-app!
                 add-watch! *states :changes $ fn (states prev)
-                  hint-fn $ {}
-                    :args $ [] (:: 'Map 'Tag 'Dynamic) (:: 'Map 'Tag 'Dynamic)
-                    :return 'Unit
+                  hint-fn $ Fn (Map Tag Dynamic) (Map Tag Dynamic) (-> Unit)
                   render-app!
                 println "|Code updated."
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! mount-target
@@ -174,9 +150,7 @@
                 , @*store
               , dispatch!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'simulate-login! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn simulate-login! ()
             match
@@ -187,9 +161,7 @@
               (:none) (println "|Found no storage.")
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.client
           :require
@@ -221,11 +193,11 @@
         'comp-article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-article (states article focuses)
             let
-                article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
+                article-map $ decode-map-as article $ Map Tag Dynamic
                 article-title $ read-article-title article
                 article-id $ decode-map-as (required-field article-map :id) 'String
-                focuses-map $ decode-map-as focuses $ :: 'Map 'String
-                  :: 'List $ :: 'Map 'Tag 'Dynamic
+                focuses-map $ decode-map-as focuses $ Map String
+                  List $ Map Tag Dynamic
                 edit-plugin $ use-prompt (>> states :edit)
                   {} (:text "|New title?") (:initial article-title)
                 remove-plugin $ use-confirm (>> states :remove)
@@ -246,36 +218,30 @@
                         :color $ hsl 200 80 70
                         :cursor :pointer
                       fn (e d!)
-                        hint-fn $ {} (:return 'Unit)
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:return 'Unit)
-                              :args $ [] *dispatch-op
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         .show edit-plugin (alert-dispatch d!)
                           fn (result)
-                            hint-fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
+                            hint-fn $ Fn Dynamic $ -> Unit
                             println "|as result:" result
                             when
                               not $ blank? $ decode-map-as result 'String
                               d! $ :: :article/title $ {} (:id article-id) (:title result)
                             , &unit
                         , &unit
-                    =< 16 nil
+                    space-x 16
                     comp-icon :trash
                       {} (:font-size 14)
                         :color $ hsl 200 80 70
                         :cursor :pointer
                       fn (e d!)
-                        hint-fn $ {} (:return 'Unit)
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:return 'Unit)
-                              :args $ [] *dispatch-op
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         .show remove-plugin (alert-dispatch d!)
                           fn ()
-                            hint-fn $ {}
-                              :args $ []
-                              :return 'Unit
+                            hint-fn $ Fn $ -> Unit
                             d! $ :: :article/remove-one article-id
                             , &unit
                         , &unit
@@ -287,11 +253,11 @@
                     ->
                       assert-type
                         option:unwrap-or (get focuses-map article-id) ([])
-                        :: 'List 'Dynamic
+                        List Dynamic
                       .to-list
                       .map $ fn (info)
                         let
-                            info-map $ decode-map-as info $ :: 'Map 'Tag 'Dynamic
+                            info-map $ decode-map-as info $ Map Tag Dynamic
                           [] (required-field info-map :id)
                             div
                               {} $ :style $ {} (:margin-right 8)
@@ -302,16 +268,14 @@
                 .render edit-plugin
                 .render remove-plugin
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'comp-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-articles (states router-data)
             let
-                router-map $ decode-map-as router-data $ :: 'Map 'Tag 'Dynamic
+                router-map $ decode-map-as router-data $ Map Tag Dynamic
                 articles $ decode-map-as
                   field-or router-map :articles $ {}
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 focuses $ field-or router-map :focuses $ {}
                 create-plugin $ use-prompt (>> states :create)
                   {} (:text "|Title of article:") (:initial |)
@@ -325,50 +289,42 @@
                 list->
                   {} $ :style $ merge ui/row
                     {} $ :flex-wrap :wrap
-                  -> articles (.to-list)
-                    sort $ fn (a b)
-                      &compare
-                        option:unwrap-or (first a) |
-                        option:unwrap-or (first b) |
-                    .map-pair $ fn (k article)
+                  -> articles keys .to-list (sort &compare)
+                    map $ fn (key)
                       let
-                          article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
-                        [] k $ comp-article
-                          >> states $ decode-map-as (required-field article-map :id) 'String
+                          article $ .unwrap $ get articles key
+                        [] key $ comp-article
+                          >> states $ decode-map-as (required-field article :id) 'String
                           , article focuses
                 div ({})
                   button
                     {}
                       :style $ merge style/button $ {} (:padding "|4px 16px")
                       :on-click $ fn (e d!)
-                        hint-fn $ {} (:return 'Unit)
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {} (:return 'Unit)
-                              :args $ [] *dispatch-op
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         .show create-plugin (alert-dispatch d!)
                           fn (result)
-                            hint-fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                            when
-                              not $ blank? $ decode-map-as result 'String
-                              d! $ :: :article/create result
+                            hint-fn $ Fn Dynamic $ -> Unit
+                            let
+                                title $ decode-map-as result String
+                              when
+                                not $ blank? title
+                                d! $ :: :article/create title
                             , &unit
                         , &unit
                     <> "|Create Article"
                 .render create-plugin
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'read-article-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-article-title (value)
             let
-                value-map $ decode-map-as value $ :: 'Map 'Tag 'Dynamic
+                value-map $ decode-map-as value $ Map Tag Dynamic
               decode-map-as (required-field value-map :title) 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> String)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-text)
               :code $ quote $ do
@@ -382,32 +338,27 @@
                     read-article-title $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-article-title $ {} $ :title 4
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :text-boundary :unit
         'read-focus-name $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-focus-name (info)
             let
-                info-map $ decode-map-as info $ :: 'Map 'Tag 'Dynamic
+                info-map $ decode-map-as info $ Map Tag Dynamic
               match (optional-field info-map :name)
                 (:some raw-name)
                   Option :some $ decode-map-as raw-name 'String
                 (:none) (Option :none)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'Option 'String
+          :schema $ quote $ Fn Dynamic
+            -> $ Option String
           :tests $ [] $ %{} 'TestEntry (:name |missing-name-remains-absent)
             :code $ quote $ do
               assert= (Option :none)
@@ -424,7 +375,7 @@
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x
             app.style :as style
             respo-alerts.core :refer $ use-confirm use-prompt
             feather.core :refer $ comp-icon comp-i
@@ -432,21 +383,21 @@
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
         'NavigationView $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct NavigationView (:logged-in? 'Bool)
-            :count $ :: 'Option 'Number
+          :code $ quote $ defstruct NavigationView (:logged-in? Bool)
+            :count $ Option Number
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'StoreView $ %{} 'CodeEntry
           :doc "|Typed view of the untyped store map synced from the server, decoded once per render by read-store-view."
-          :code $ quote $ defstruct StoreView (:navigation 'app.comp.container/NavigationView)
-            :router $ :: 'Map 'Tag 'Dynamic
-            :route-name $ :: 'Option 'Tag
-            :route-data 'Dynamic
-            :paragraph-id $ :: 'Option 'String
-            :color $ :: 'Option 'String
-            :messages $ :: 'Map 'String 'Dynamic
+          :code $ quote $ defstruct StoreView (:navigation app.comp.container/NavigationView)
+            :router $ Map Tag Dynamic
+            :route-name $ Option Tag
+            :route-data Dynamic
+            :paragraph-id $ Option String
+            :color $ Option String
+            :messages $ Map String Dynamic
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (states store)
             match store
@@ -462,31 +413,24 @@
                     paragraph-id $ :paragraph-id view
                     article? $ option-is? route-name :article
                     article-data $ if article?
-                      decode-map-as route-data $ :: 'Map 'Tag 'Dynamic
+                      decode-map-as route-data $ Map Tag Dynamic
                       {}
                     editing-id $ if (and logged-in? article?) paragraph-id $ Option :none
                   div
-                    {} $ :style $ merge
-                      unsafe-coerce ui/global $ :: 'Map 'Tag 'Dynamic
-                      unsafe-coerce ui/fullscreen $ :: 'Map 'Tag 'Dynamic
-                      unsafe-coerce ui/column $ :: 'Map 'Tag 'Dynamic
+                    {} $ :style $ merge ui/global ui/fullscreen ui/column
                     div
-                      {} $ :style $ merge
-                        unsafe-coerce ui/expand $ :: 'Map 'Tag 'Dynamic
-                        unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
+                      {} $ :style $ merge ui/expand ui/row
                       comp-navigation logged-in? $ :count navigation-view
                       if logged-in?
                         match route-name
                           (:some name)
                             match name
                               :profile $ comp-profile (required-field store-map :user)
-                                decode-map-as route-data $ :: 'Map 'Number 'Dynamic
+                                decode-map-as route-data $ Map Number Dynamic
                               :home $ comp-articles (>> states :articles)
-                                decode-map-as route-data $ :: 'Map 'Tag 'Dynamic
+                                decode-map-as route-data $ Map Tag Dynamic
                               :article $ div
-                                {} $ :style $ merge
-                                  unsafe-coerce ui/row $ :: 'Map 'Tag 'Dynamic
-                                  unsafe-coerce ui/flex $ :: 'Map 'Tag 'Dynamic
+                                {} $ :style $ merge ui/row ui/flex
                                 comp-previewer (>> states :previewer) (required-field article-data :article) (required-field article-data :focuses) (required-field article-data :members) paragraph-id
                               _ $ render-unknown-route router
                           (:none) (render-unknown-route router)
@@ -501,13 +445,18 @@
                       fn (info d!)
                         d! $ :: :session/remove-message info
                     comp-status-color $ :color view
-                    when dev? $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
-                    when dev? $ comp-reel (read-reel-length store-map)
-                      {} (:right 0) (:bottom 40)
+                    if dev?
+                      Option :some $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
+                      Option :none
+                    if dev?
+                      Option :some $ comp-reel (read-reel-length store-map)
+                        {} (:right 0) (:bottom 40)
+                      Option :none
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic $ :: 'Option (:: 'Map 'Tag 'Dynamic)
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic
+            Option $ Map Tag Dynamic
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
             div
@@ -516,11 +465,10 @@
                 {}
                   :style $ {} $ :cursor :pointer
                   :on-click $ fn (e d!)
-                    d! $ :: :effect/connect nil
+                    d! $ :: :effect/connect
                 <> "|Socket broken! Click to retry." $ {} (:font-family ui/font-fancy) (:font-weight 100) (:font-size 32)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ []
+          :schema $ quote $ Fn (-> respo.schema/Component)
         'comp-status-color $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-status-color (color)
             let
@@ -530,12 +478,11 @@
                   (:some color-value) (assoc indicator-style :background-color color-value)
                   (:none) indicator-style
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'Option 'String
+          :schema $ quote $ Fn (Option String) (-> respo.schema/Component)
         'read-navigation-view $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-navigation-view (store)
             let
-                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                store-map $ decode-map-as store $ Map Tag Dynamic
               NavigationView :logged-in?
                 decode-map-as (required-field store-map :logged-in?) 'Bool
                 , :count $ match (optional-field store-map :count)
@@ -543,8 +490,7 @@
                     Option :some $ decode-map-as raw-count 'Number
                   (:none) (Option :none)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.comp.container/NavigationView)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.comp.container/NavigationView)
           :tests $ []
             %{} 'TestEntry (:name |guest-count-is-absent-not-zero)
               :code $ quote $ let
@@ -575,27 +521,21 @@
                     read-navigation-view $ {} $ :logged-in? |not-a-bool
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-navigation-view $ {} (:logged-in? false) (:count |not-a-number)
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-navigation-view $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :navigation-view :unit
             %{} 'TestEntry (:name |explicit-nil-count-is-absent)
@@ -606,11 +546,10 @@
         'read-reel-length $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-reel-length (store)
             let
-                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                store-map $ decode-map-as store $ Map Tag Dynamic
               decode-map-as (required-field store-map :reel-length) 'Number
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Number)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> Number)
           :tests $ []
             %{} 'TestEntry (:name |preserves-zero-and-numeric-record-count)
               :code $ quote $ do
@@ -624,29 +563,25 @@
                     read-reel-length $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-reel-length $ {} $ :reel-length |2
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :projection :unit
         'read-store-view $ %{} 'CodeEntry
           :doc "|Decode the store map into StoreView. Guests get an empty router; a router without :data gets an empty map."
           :code $ quote $ defn read-store-view (store)
             let
-                store-map $ decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                store-map $ decode-map-as store $ Map Tag Dynamic
                 navigation $ read-navigation-view store-map
-                session $ decode-map-as (required-field store-map :session) (:: 'Map 'Tag 'Dynamic)
+                session $ decode-map-as (required-field store-map :session) (Map Tag Dynamic)
                 router $ if (:logged-in? navigation)
-                  decode-map-as (required-field store-map :router) (:: 'Map 'Tag 'Dynamic)
+                  decode-map-as (required-field store-map :router) (Map Tag Dynamic)
                   {}
                 route-name $ match (optional-field router :name)
                   (:some raw-name)
@@ -662,13 +597,12 @@
                   (:none) (Option :none)
                 messages $ decode-map-as
                   option:unwrap-or (get session :messages) ({})
-                  :: 'Map 'String 'Dynamic
+                  Map String Dynamic
               StoreView :navigation navigation :router router :route-name route-name :route-data
                 field-or router :data $ {}
                 , :paragraph-id paragraph-id :color color :messages messages
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.comp.container/StoreView)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.comp.container/StoreView)
           :tests $ []
             %{} 'TestEntry (:name |guest-store-has-empty-router)
               :code $ quote $ let
@@ -707,9 +641,7 @@
                     read-store-view $ {} $ :logged-in? false
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
@@ -717,9 +649,7 @@
                       :session $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :navigation-view :unit
         'render-unknown-route $ %{} 'CodeEntry (:doc "|Fallback for a router without a known :name.")
@@ -728,13 +658,12 @@
               {} $ :style ui/flex
               <> $ str router
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Element)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Element)
         'style-body $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-body
             {} $ :padding "|8px 16px"
           :examples $ []
-          :schema $ :: 'Map 'Tag 'String
+          :schema $ quote $ Map Tag String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require
@@ -743,7 +672,6 @@
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> div span >> button
             respo.comp.inspect :refer $ comp-inspect
-            respo.comp.space :refer $ =<
             app.comp.navigation :refer $ comp-navigation
             app.comp.profile :refer $ comp-profile
             app.comp.login :refer $ comp-login
@@ -757,24 +685,24 @@
       :defs $ {}
         'EditorInputProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct EditorInputProps
-            :style $ :: 'Map 'Tag 'Dynamic
-            :class-name 'String
-            :placeholder 'String
-            :value 'String
-            :on-input 'respo.schema/EventHandler
-            :on-keydown 'respo.schema/EventHandler
+            :style $ Map Tag Dynamic
+            :class-name String
+            :placeholder String
+            :value String
+            :on-input respo.schema/EventHandler
+            :on-keydown respo.schema/EventHandler
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'comp-editor-panel $ %{} 'CodeEntry
           :doc "|Editor for the paragraph being edited. editing-id is absent when nothing is edited; the panel then collapses and renders no handlers, so the empty sort-id fallback is never dispatched."
           :code $ quote $ defcomp comp-editor-panel (states editing-id paragraph)
             let
                 states-map $ decode-map-as states 'Map
-                paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
+                paragraph-map $ decode-map-as paragraph $ Map Tag Dynamic
                 cursor $ required-field states-map :cursor
                 state $ decode-map-as
                   field-or states-map :data $ {} (:text |) (:time 0)
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 visible? $ .some? editing-id
                 sort-id $ .unwrap-or editing-id |
                 remove-plugin $ use-confirm (>> states :remove)
@@ -788,85 +716,70 @@
                     :background-color $ hsl 0 0 100
                     :border-top $ str "|1px solid " $ hsl 0 0 90
                     :padding $ if visible? 8 0
-                    :padding-left $ if visible? 88 false
+                    :padding-left $ if visible? 88 0
                 match editing-id
                   (:some _editing)
-                    div
+                    Option :some $ div
                       {} $ :style $ merge ui/flex ui/column
                         {} (:max-width 960) (:width |100%) (:margin :auto)
                       comp-editor-toolbar states sort-id
-                      =< nil 8
+                      space-y 8
                       textarea $ EditorInputProps :style
                         merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
                           :border $ str "|1px solid " $ hsl 240 80 90
                           :background-color $ hsl 0 0 100
                         , :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
                           fn (e d!)
-                            hint-fn $ {}
-                              :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                :: 'Fn $ {}
-                                  :args $ [] *dispatch-op
-                                  :return 'Unit
-                              :return 'Unit
+                            hint-fn $ Fn respo.schema/RespoEvent
+                              Fn *dispatch-op $ -> Unit
+                              -> Unit
                             let
                                 timestamp $ decode-map-as (js/Date.now) 'Number
-                                value $ decode-map-as
-                                  .unwrap $ get e :value
-                                  , 'String
-                                state-cursor $ decode-map-as cursor $ :: 'List 'Dynamic
+                                value $ decode-map-as (:value e) 'String
+                                state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
                               d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
                               d! $ :: :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
                               , &unit
                           , :on-keydown $ fn (e d!)
-                            hint-fn $ {}
-                              :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                :: 'Fn $ {}
-                                  :args $ [] *dispatch-op
-                                  :return 'Unit
-                              :return 'Unit
-                            when (field-is? e :keycode 27)
+                            hint-fn $ Fn respo.schema/RespoEvent
+                              Fn *dispatch-op $ -> Unit
+                              -> Unit
+                            when
+                              = (:keycode e) 27
                               d! $ :: :paragraph/finish-editing sort-id
                             , &unit
-                  (:none) nil
+                  (:none) (Option :none)
                 match editing-id
                   (:some _editing)
-                    comp-icon :trash
+                    Option :some $ comp-icon :trash
                       {} (:font-size 14) (:cursor :pointer)
                         :color $ hsl 200 80 70
                       fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] *dispatch-op
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         .show remove-plugin (alert-dispatch d!)
                           fn ()
-                            hint-fn $ {}
-                              :args $ []
-                              :return 'Unit
+                            hint-fn $ Fn $ -> Unit
                             d! $ :: :paragraph/remove sort-id
                             , &unit
                         , &unit
-                  (:none) nil
+                  (:none) (Option :none)
                 .render remove-plugin
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic (:: 'Option 'String) 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'read-editor-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-editor-text (state paragraph)
             let
-                state-map $ decode-map-as state $ :: 'Map 'Tag 'Dynamic
-                paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
+                state-map $ decode-map-as state $ Map Tag Dynamic
+                paragraph-map $ decode-map-as paragraph $ Map Tag Dynamic
                 state-time $ decode-map-as (required-field state-map :time) 'Number
                 paragraph-time $ decode-map-as (required-field paragraph-map :time) 'Number
               if (> state-time paragraph-time)
                 decode-map-as (required-field state-map :text) 'String
                 decode-map-as (required-field paragraph-map :content) 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'Dynamic 'Dynamic
+          :schema $ quote $ Fn Dynamic Dynamic (-> String)
           :tests $ []
             %{} 'TestEntry (:name |strictly-newer-local-edit-wins)
               :code $ quote $ do
@@ -889,9 +802,7 @@
                       {} (:time 10) (:content |remote)
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :editor-text :unit
       :ns $ %{} 'NsEntry (:doc |)
@@ -902,7 +813,7 @@
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
             respo-md.comp.md :refer $ comp-md-block
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-y
             app.style :as style
             app.comp.editor-toolbar :refer $ comp-editor-toolbar
             respo-alerts.core :refer $ use-confirm
@@ -912,31 +823,28 @@
       :defs $ {}
         'ToolbarCloseProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarCloseProps
-            :style $ :: 'Map 'Tag 'Dynamic
-            :on-click 'respo.schema/EventHandler
+            :style $ Map Tag Dynamic
+            :on-click respo.schema/EventHandler
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'ToolbarDragProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarDragProps
-            :style $ :: 'Map 'Tag 'Dynamic
-            :draggable 'Bool
-            :on-dragstart 'respo.schema/EventHandler
+            :style $ Map Tag Dynamic
+            :draggable Bool
+            :on-dragstart respo.schema/EventHandler
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'comp-editor-toolbar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-editor-toolbar (states sort-id)
             div
               ToolbarDragProps :style
                 merge ui/row $ {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
                 , :draggable true :on-dragstart $ fn (e d!)
-                  hint-fn $ {} (:return 'Unit)
-                    :args $ [] (:: 'Map 'Tag 'Dynamic)
-                      :: 'Fn $ {} (:return 'Unit)
-                        :args $ [] *dispatch-op
+                  hint-fn $ Fn respo.schema/RespoEvent
+                    Fn *dispatch-op $ -> Unit
+                    -> Unit
                   let
-                      event $ unsafe-coerce
-                        option:unwrap-or (get e :event) (js-object)
-                        , 'app.ffi.drag/DragEventHost
+                      event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
                       data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
                     .set-data! data-transfer |text $ str sort-id
                   , &unit
@@ -946,49 +854,46 @@
                   , :on-click $ on-close states sort-id
                 comp-i :chevron-down 14 $ hsl 200 80 70
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
+        'dispatch-editor-close! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn dispatch-editor-close! (cursor paragraph-key dispatch!)
+            dispatch! $ :: :paragraph/finish-editing paragraph-key
+            dispatch! $ :: :states cursor nil
+            , &unit
+          :examples $ []
+          :schema $ quote $ Fn (List respo.schema/CoordKey) String
+            Fn *dispatch-op $ -> Unit
+            -> Unit
         'on-close $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-close (states sort-id)
             let
-                states-map $ decode-map-as states $ :: 'Map 'Tag 'Dynamic
+                states-map $ decode-map-as states $ Map Tag Dynamic
                 cursor $ decode-map-as
                   .unwrap $ get states-map :cursor
-                  :: 'List 'Dynamic
+                  List respo.schema/CoordKey
                 paragraph-key $ decode-map-as sort-id 'String
               fn (event dispatch!)
-                hint-fn $ {} (:return 'Unit)
-                  :args $ [] (:: 'Map 'Tag 'Dynamic)
-                    :: 'Fn $ {} (:return 'Unit)
-                      :args $ [] *dispatch-op
-                dispatch! $ :: :paragraph/finish-editing paragraph-key
-                dispatch! $ :: :states cursor nil
-                , &unit
+                hint-fn $ Fn respo.schema/RespoEvent
+                  Fn *dispatch-op $ -> Unit
+                  -> Unit
+                dispatch-editor-close! cursor paragraph-key dispatch!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/EventHandler)
-            :args $ [] 'Dynamic 'Dynamic
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/EventHandler)
           :tests $ []
             %{} 'TestEntry (:name |dispatches-finish-before-clear-on-mixed-cursor)
               :code $ quote $ let
                   cursor $ [] :editor |paragraph 2
-                  handler $ on-close
-                    {} $ :cursor cursor
-                    , |c32
                   calls $ ref 0
-                assert= &unit $ handler ({})
-                  fn (op)
-                    hint-fn $ {}
-                      :args $ [] *dispatch-op
-                      :return 'Unit
-                    assert=
-                      if
-                        = (deref calls) 0
-                        :: :paragraph/finish-editing |c32
-                        :: :states cursor nil
-                      , op
-                    reset! calls $ inc $ deref calls
-                    , &unit
+                assert= &unit $ dispatch-editor-close! cursor |c32 $ fn (op)
+                  hint-fn $ Fn *dispatch-op $ -> Unit
+                  assert=
+                    if
+                      = (deref calls) 0
+                      :: :paragraph/finish-editing |c32
+                      :: :states cursor nil
+                    , op
+                  reset! calls $ inc $ deref calls
+                  , &unit
                 assert= 2 $ deref calls
               :tags $ #{} :toolbar-close :unit
             %{} 'TestEntry (:name |rejects-invalid-cursor-before-creating-handler)
@@ -1000,9 +905,7 @@
                       , |c32
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :toolbar-close :unit
       :ns $ %{} 'NsEntry (:doc |)
@@ -1012,22 +915,21 @@
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
             respo-md.comp.md :refer $ comp-md-block
-            respo.comp.space :refer $ =<
             app.style :as style
             feather.core :refer $ comp-i
             app.ffi.drag :refer $ DragEventHost
     'app.comp.login $ %{} 'FileEntry
       :defs $ {}
         'LoginFields $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct LoginFields (:username 'String) (:password 'String)
+          :code $ quote $ defstruct LoginFields (:username String) (:password String)
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'comp-login $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-login (states)
             let
                 states-map $ decode-map-as states 'Map
-                cursor $ decode-map-as (required-field states-map :cursor) (:: 'List 'Dynamic)
-                state $ decode-map-as (field-or states-map :data initial-state) (:: 'Map 'Tag 'Dynamic)
+                cursor $ decode-map-as (required-field states-map :cursor) (List respo.schema/CoordKey)
+                state $ decode-map-as (field-or states-map :data initial-state) (Map Tag Dynamic)
                 fields $ read-login-fields state
               div
                 {} $ :style $ merge ui/flex ui/center
@@ -1039,7 +941,7 @@
                     div ({})
                       comp-md-block "|Tabletwo is a realtime Markdown editing tool. Pick a name to join:" $ {} $ :style
                         {} (:line-height |1.4em) (:text-align :center)
-                    =< nil 16
+                    space-y 16
                     div ({})
                       input $ {} (:placeholder |Username)
                         :value $ :username fields
@@ -1050,90 +952,77 @@
                         :value $ :password fields
                         :style ui/input
                         :on-input $ on-input cursor state :password
-                  =< nil 8
+                  space-y 8
                   div
                     {} $ :style $ {} (:text-align :right)
                     span $ {} (:inner-text "|Sign up")
                       :style $ merge style/link
                       :on-click $ on-submit (:username fields) (:password fields) true
-                    =< 8 nil
+                    space-x 8
                     span $ {} (:inner-text "|Log in")
                       :style $ merge style/link
                       :on-click $ on-submit (:username fields) (:password fields) false
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :js-ffi)
+        'dispatch-input! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn dispatch-input! (cursor state field value dispatch!)
+            dispatch! $ :: :states cursor $ assoc state field (decode-map-as value String)
+            , &unit
+          :examples $ []
+          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map Tag Dynamic) Tag Dynamic
+            Fn *dispatch-op $ -> Unit
+            -> Unit
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state
             {} (:username |) (:password |)
           :examples $ []
-          :schema $ :: 'Map 'Tag 'String
+          :schema $ quote $ Map Tag String
         'on-input $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-input (cursor state field)
             fn (event dispatch!)
-              hint-fn $ {} (:return 'Unit)
-                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:return 'Unit)
-                    :args $ [] *dispatch-op
-              dispatch! $ :: :states cursor $ assoc state field
-                decode-map-as (required-field event :value) 'String
-              , &unit
+              hint-fn $ Fn respo.schema/RespoEvent
+                Fn *dispatch-op $ -> Unit
+                -> Unit
+              dispatch-input! cursor state field (:value event) dispatch!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/EventHandler)
-            :args $ [] (:: 'List 'Dynamic) (:: 'Map 'Tag 'Dynamic) 'Tag
+          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map Tag Dynamic) Tag (-> respo.schema/EventHandler)
           :tests $ []
             %{} 'TestEntry (:name |dispatches-one-state-enum-with-mixed-cursor)
               :code $ quote $ let
                   cursor $ [] :login |panel 2
                   state $ {} (:username |old) (:password |secret) (:extra false)
-                  handler $ on-input cursor state :username
                   calls $ ref 0
-                assert= &unit $ handler
-                  {} $ :value "|用户🌱"
-                  fn (op)
-                    hint-fn $ {}
-                      :args $ [] *dispatch-op
-                      :return 'Unit
-                    assert=
-                      :: :states cursor $ assoc state :username "|用户🌱"
-                      , op
-                    reset! calls $ inc $ deref calls
-                    , &unit
+                assert= &unit $ dispatch-input! cursor state :username "|用户🌱" $ fn (op)
+                  hint-fn $ Fn *dispatch-op $ -> Unit
+                  assert=
+                    :: :states cursor $ assoc state :username "|用户🌱"
+                    , op
+                  reset! calls $ inc $ deref calls
+                  , &unit
                 assert= 1 $ deref calls
-                assert= |old $ match (get state :username)
-                  (:some lookup-value) lookup-value
-                  (:none) nil
+                assert= |old $ .unwrap $ get state :username
               :tags $ #{} :login-fields :unit
             %{} 'TestEntry (:name |rejects-non-text-before-dispatch)
               :code $ quote $ let
                   calls $ ref 0
-                  handler $ on-input ([]) initial-state :password
                 assert= true $ try
                   do
-                    handler
-                      {} $ :value 9
-                      fn (op)
-                        hint-fn $ {}
-                          :args $ [] *dispatch-op
-                          :return 'Unit
-                        reset! calls $ inc $ deref calls
-                        , &unit
+                    dispatch-input! ([]) initial-state :password 9 $ fn (op)
+                      hint-fn $ Fn *dispatch-op $ -> Unit
+                      reset! calls $ inc $ deref calls
+                      , &unit
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= 0 $ deref calls
               :tags $ #{} :login-fields :unit
         'on-submit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-submit (username password signup?)
             fn (e dispatch!)
-              hint-fn $ {} (:return 'Unit)
-                :args $ [] (:: 'Map 'Tag 'Dynamic)
-                  :: 'Fn $ {} (:return 'Unit)
-                    :args $ [] *dispatch-op
+              hint-fn $ Fn respo.schema/RespoEvent
+                Fn *dispatch-op $ -> Unit
+                -> Unit
               if signup?
                 dispatch! $ :: :user/sign-up $ [] username password
                 dispatch! $ :: :user/log-in $ [] username password
@@ -1141,19 +1030,16 @@
                 format-cirru-edn $ [] username password
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/EventHandler)
-            :args $ [] 'String 'String 'Bool
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String String Bool (-> respo.schema/EventHandler) (:features :js-ffi)
         'read-login-fields $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-fields (state)
             let
-                state-map $ decode-map-as state $ :: 'Map 'Tag 'Dynamic
+                state-map $ decode-map-as state $ Map Tag Dynamic
               LoginFields :username
                 decode-map-as (required-field state-map :username) 'String
                 , :password $ decode-map-as (required-field state-map :password) 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.comp.login/LoginFields)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.comp.login/LoginFields)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-fields-preserve-extras)
               :code $ quote $ let
@@ -1175,18 +1061,14 @@
                     read-login-fields $ {} (:username 2) (:password |)
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-login-fields $ {} $ :username |
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :login-fields :unit
       :ns $ %{} 'NsEntry (:doc |)
@@ -1194,7 +1076,7 @@
           :require
             app.decode :refer $ required-field field-or
             respo.core :refer $ defcomp <> div input button span
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             respo.comp.inspect :refer $ comp-inspect
             respo-ui.core :as ui
             app.schema :as schema
@@ -1206,10 +1088,10 @@
       :defs $ {}
         'NavigationProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct NavigationProps
-            :style $ :: 'Map 'Tag 'Dynamic
-            :on-click 'respo.schema/EventHandler
+            :style $ Map Tag Dynamic
+            :on-click respo.schema/EventHandler
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'comp-navigation $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-navigation (logged-in? members-count)
             div
@@ -1222,12 +1104,9 @@
                 div
                   NavigationProps :on-click
                     fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] *dispatch-op
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn *dispatch-op $ -> Unit
+                        -> Unit
                       d! $ :: :router/change $ {} (:name :home)
                       , &unit
                     , :style style-entry
@@ -1238,26 +1117,21 @@
                 NavigationProps :style
                   {} $ :cursor |pointer
                   , :on-click $ fn (e d!)
-                    hint-fn $ {}
-                      :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {}
-                          :args $ [] *dispatch-op
-                          :return 'Unit
-                      :return 'Unit
+                    hint-fn $ Fn respo.schema/RespoEvent
+                      Fn *dispatch-op $ -> Unit
+                      -> Unit
                     d! $ :: :router/change $ {} (:name :profile)
                     , &unit
                 <> $ if logged-in? |Me |Guest
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Bool $ :: 'Option 'Number
+          :schema $ quote $ Fn Bool (Option Number) (-> respo.schema/Component)
         'navigation-count-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn navigation-count-text (members-count)
             match members-count
               (:some value) (str value)
               (:none) (str nil)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] $ :: 'Option 'Number
+          :schema $ quote $ Fn (Option Number) (-> String)
           :tests $ [] $ %{} 'TestEntry (:name |missing-and-zero-count-display)
             :code $ quote $ do
               assert= (str nil)
@@ -1269,30 +1143,29 @@
           :code $ quote $ def style-entry
             {} (:cursor :pointer) (:padding "|8px 0")
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.navigation
           :require
             respo-ui.core :refer $ hsl
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> span div
-            respo.comp.space :refer $ =<
     'app.comp.previewer $ %{} 'FileEntry
       :defs $ {}
         'ParagraphDropProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ParagraphDropProps
-            :style $ :: 'Map 'Tag 'Dynamic
-            :on-drop 'respo.schema/EventHandler
-            :on-dragover 'respo.schema/EventHandler
-            :on-dragenter 'respo.schema/EventHandler
+            :style $ Map Tag Dynamic
+            :on-drop respo.schema/EventHandler
+            :on-dragover respo.schema/EventHandler
+            :on-dragenter respo.schema/EventHandler
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'article-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn article-text (article)
             let
                 title $ read-article-title article
                 paragraphs $ decode-map-as (required-field article :paragraphs)
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 entries $ map-entries paragraphs
                 contents $ -> entries
                   .sort-by $ fn (entry) (:key entry)
@@ -1300,8 +1173,7 @@
                     read-paragraph-content $ :value entry
               str &newline "|# " title &newline &newline |---- &newline &newline $ .join-string contents $ str &newline &newline |---- &newline &newline
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> String)
           :tests $ []
             %{} 'TestEntry (:name |export-orders-keys-and-preserves-unicode)
               :code $ quote $ let
@@ -1321,15 +1193,11 @@
             %{} 'TestEntry (:name |export-rejects-invalid-wire-fields)
               :code $ quote $ let
                   rejected? $ fn (article)
-                    hint-fn $ {}
-                      :args $ [] $ :: 'Map 'Tag 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn (Map Tag Dynamic) (-> Bool)
                     try
                       do (article-text article) false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         , true
                 assert= true $ rejected? $ {} (:title 42)
                   :paragraphs $ {}
@@ -1358,13 +1226,11 @@
                             span $ {}
                           (:some focus-name) (<> focus-name)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'comp-paragraph $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-paragraph (states sort-id paragraph focus-list focused?)
             let
-                paragraph-map $ decode-map-as paragraph $ :: 'Map 'Tag 'Dynamic
+                paragraph-map $ decode-map-as paragraph $ Map Tag Dynamic
                 paragraph-text $ read-paragraph-content paragraph
               div
                 ParagraphDropProps :style
@@ -1372,16 +1238,11 @@
                     :border $ str "|1px solid " $ hsl 0 0 90
                   , :on-drop
                     fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] *dispatch-op
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn *dispatch-op $ -> Unit
+                        -> Unit
                       let
-                          event $ unsafe-coerce
-                            option:unwrap-or (get e :event) (js-object)
-                            , 'app.ffi.drag/DragEventHost
+                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
                           data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
                           data $ data-transfer .get-data |text
                         event .stop-propagation!
@@ -1390,37 +1251,25 @@
                       , &unit
                     , :on-dragover
                       fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] *dispatch-op
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         let
-                            event $ unsafe-coerce
-                              option:unwrap-or (get e :event) (js-object)
-                              , 'app.ffi.drag/DragEventHost
+                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
                           event .prevent-default!
                         , &unit
                       , :on-dragenter $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] *dispatch-op
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn *dispatch-op $ -> Unit
+                          -> Unit
                         let
-                            event $ unsafe-coerce
-                              option:unwrap-or (get e :event) (js-object)
-                              , 'app.ffi.drag/DragEventHost
+                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
                           event .prevent-default!
                         , &unit
                 comp-md-block paragraph-text $ {} (:class-name |preview-content)
                   :style $ {} $ :padding "|0 16px"
                   :highlight $ fn (code lang)
-                    hint-fn $ {}
-                      :args $ [] 'String 'String
-                      :return 'String
+                    hint-fn $ Fn String String $ -> String
                     decode-map-as
                       if (contains? supprted-langs lang)
                         let
@@ -1435,16 +1284,11 @@
                   ToolbarDragProps :style
                     merge ui/row-parted $ {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
                     , :draggable true :on-dragstart $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] *dispatch-op
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn *dispatch-op $ -> Unit
+                        -> Unit
                       let
-                          event $ unsafe-coerce
-                            option:unwrap-or (get e :event) (js-object)
-                            , 'app.ffi.drag/DragEventHost
+                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
                           data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
                         data-transfer .set-data! |text $ str sort-id
                       , &unit
@@ -1465,7 +1309,7 @@
                             d! $ :: :paragraph/edit sort-id
                             delay-focus! 400 |.editor-area
                         comp-i :edit 14 $ hsl 200 80 70
-                    =< 16 nil
+                    space-x 16
                     div
                       {}
                         :style $ {} $ :cursor :pointer
@@ -1474,19 +1318,17 @@
                           delay-focus! 400 |.editor-area
                       comp-i :file-plus 14 $ hsl 200 70 80
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic 'Bool
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic Bool (-> respo.schema/Component) (:features :js-ffi)
         'comp-previewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-previewer (states article focuses members sort-id)
             let
-                article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
+                article-map $ decode-map-as article $ Map Tag Dynamic
                 article-title $ read-article-title article
-                focuses-map $ decode-map-as focuses $ :: 'Map 'String
-                  :: 'List $ :: 'Map 'Tag 'Dynamic
-                members-map $ decode-map-as members $ :: 'Map 'Number 'Dynamic
+                focuses-map $ decode-map-as focuses $ Map String
+                  List $ Map Tag Dynamic
+                members-map $ decode-map-as members $ Map Number Dynamic
                 paragraphs-map $ decode-map-as (required-field article-map :paragraphs)
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
               div
                 {} $ :style $ merge ui/flex ui/column
                   {} (:overflow :auto) (:padding-bottom 20) (:padding-top 32)
@@ -1499,7 +1341,7 @@
                       {} $ :style $ merge ui/row
                         {} $ :align-items :center
                       <> article-title $ {} (:font-family ui/font-fancy) (:font-size 24)
-                      =< 8 nil
+                      space-x 8
                       list->
                         {} $ :style $ merge ui/row
                           {} $ :display :inline-block
@@ -1514,15 +1356,15 @@
                     div
                       {} $ :style ui/row
                       comp-text-viewer article
-                      =< 16 nil
+                      space-x 16
                       button
                         {}
                           :style $ merge style/button $ {}
                           :on-click $ fn (e d!)
-                            d! $ :: :paragraph/prepend nil
+                            d! $ :: :paragraph/prepend
                             delay-focus! 400 |.editor-area
                         <> |Prepend
-                  =< nil 16
+                  space-y 16
                   list->
                     {} $ :style $ merge ui/flex ui/column
                       {} $ :border $ str "|1px solid " (hsl 0 0 94)
@@ -1535,15 +1377,13 @@
                           [] k $ comp-paragraph (>> states k) k paragraph
                             option:unwrap-or (get focuses-map k) ([])
                             option-is? sort-id k
-                =< nil 300
+                space-y 300
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic $ :: 'Option 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic (Option String) (-> respo.schema/Component) (:features :js-ffi)
         'comp-text-viewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-text-viewer (article)
             let
-                article-map $ decode-map-as article $ :: 'Map 'Tag 'Dynamic
+                article-map $ decode-map-as article $ Map Tag Dynamic
               button
                 {}
                   :style $ merge style/button $ {}
@@ -1556,17 +1396,14 @@
                       document .write! html
                 <> |Text
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'read-focus-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-focus-list (value)
             if (nil? value) ([])
-              decode-map-as value $ :: 'List $ :: 'Map 'Tag 'Dynamic
+              decode-map-as value $ List $ Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'List $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn Dynamic
+            -> $ List $ Map Tag Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |absent-focus-is-empty-and-numeric-session-key-is-preserved
@@ -1583,19 +1420,16 @@
                     read-focus-list $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :projection :unit
         'read-paragraph-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-paragraph-content (value)
             let
-                value-map $ decode-map-as value $ :: 'Map 'Tag 'Dynamic
+                value-map $ decode-map-as value $ Map Tag Dynamic
               decode-map-as (required-field value-map :content) 'String
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> String)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-text)
               :code $ quote $ do
@@ -1609,25 +1443,21 @@
                     read-paragraph-content $ {}
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
                 assert= true $ try
                   do
                     read-paragraph-content $ {} $ :content 4
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :text-boundary :unit
         'supprted-langs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def supprted-langs
             {} (|clojure |clojure) (|javascript |javascript) (|js |javascript) (|bash |bash)
           :examples $ []
-          :schema $ :: 'Map 'String 'String
+          :schema $ quote $ Map String String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.previewer
           :require
@@ -1636,7 +1466,7 @@
             respo-ui.core :as ui
             respo.core :refer $ defcomp <> >> list-> span div button textarea
             respo-md.comp.md :refer $ comp-md-block
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             app.style :as style
             |highlight.js/lib/core :default hljs
             |escape-html :default escape-html
@@ -1654,7 +1484,7 @@
         'comp-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-profile (user members)
             let
-                user-map $ decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                user-map $ decode-map-as user $ Map Tag Dynamic
                 members-map $ read-profile-members members
               div
                 {} $ :style $ merge ui/flex
@@ -1662,11 +1492,11 @@
                 div
                   {} $ :style $ {} (:font-family ui/font-fancy) (:font-size 32) (:font-weight 100)
                   <> $ str "|Hello! " $ field-or user-map :name |
-                =< nil 16
+                space-y 16
                 div
                   {} $ :style ui/row
                   <> |Members:
-                  =< 8 nil
+                  space-x 8
                   list->
                     {} $ :style ui/row
                     -> members-map (.to-list)
@@ -1679,7 +1509,7 @@
                           if (nil? username)
                             span $ {}
                             <> $ decode-map-as username 'String
-                =< nil 48
+                space-y 48
                 div ({})
                   button
                     {}
@@ -1687,25 +1517,22 @@
                       :on-click $ fn (e d!)
                         js/location.replace $ str js/location.origin |?time= $ .now js/Date
                     <> |Refresh
-                  =< 8 nil
+                  space-x 8
                   button
                     {}
                       :style $ merge ui/button $ {} (:color :red) (:border-color :red)
                       :on-click $ fn (e dispatch!)
-                        dispatch! $ :: :user/log-out nil
+                        dispatch! $ :: :user/log-out
                         storage-remove! $ :storage-key config/site
                     <> "|Log out"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] 'Dynamic 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
         'read-profile-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-profile-members (value)
-            decode-map-as value $ :: 'Map 'Number 'Dynamic
+            decode-map-as value $ Map Number Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'Map 'Number 'Dynamic
+          :schema $ quote $ Fn Dynamic
+            -> $ Map Number Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |numeric-session-keys-preserve-string-and-absent-names
@@ -1720,9 +1547,7 @@
                     read-profile-members $ {} $ |7 "|成员"
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :projection :unit
       :ns $ %{} 'NsEntry (:doc |)
@@ -1733,26 +1558,26 @@
             app.schema :as schema
             respo-ui.core :as ui
             respo.core :refer $ defcomp list-> <> span button div a
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             app.style :as style
             app.config :as config
             js-ffi.browser :refer $ storage-remove!
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'SiteConfig $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct SiteConfig (:port 'Number) (:title 'String) (:icon 'String) (:theme 'String) (:storage-key 'String) (:storage-file 'String)
+          :code $ quote $ defstruct SiteConfig (:port Number) (:title String) (:icon String) (:theme String) (:storage-key String) (:storage-file String)
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'dev? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def dev?
             = |dev $ option:unwrap-or (get-env |mode) |release
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             SiteConfig :port 11003 :title |Table2 :icon |http://cdn.tiye.me/logo/topix.png :theme |#eeeeff :storage-key |table2 :storage-file |storage.cirru
           :examples $ []
-          :schema $ :: 'app.config/SiteConfig
+          :schema $ quote app.config/SiteConfig
           :tests $ [] $ %{} 'TestEntry (:name |preserves-original-site-values)
             :code $ quote $ do
               assert= 11003 $ :port site
@@ -1771,9 +1596,7 @@
           :code $ quote $ defn field-is? (m k expected)
             option-is? (get m k) expected
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ [] (:: 'Map 'K 'V) 'K 'V
-            :generics $ [] 'K 'V
+          :schema $ quote $ Fn (Map K V) K V (-> Bool) (:generics K V)
           :tests $ [] $ %{} 'TestEntry (:name |missing-never-matches)
             :code $ quote $ do
               assert= true $ field-is?
@@ -1786,7 +1609,7 @@
               assert= false $ field-is?
                 decode-map-as
                   {} $ :kind nil
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 , :kind :patch
             :tags $ #{} :decode :unit
         'field-or $ %{} 'CodeEntry
@@ -1794,9 +1617,7 @@
           :code $ quote $ defn field-or (m k fallback)
             .unwrap-or (optional-field m k) fallback
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'V)
-            :args $ [] (:: 'Map 'K 'V) 'K 'V
-            :generics $ [] 'K 'V
+          :schema $ quote $ Fn (Map K V) K V (-> V) (:generics K V)
           :tests $ [] $ %{} 'TestEntry (:name |missing-and-nil-use-default)
             :code $ quote $ do
               assert= 1 $ field-or
@@ -1805,13 +1626,17 @@
               assert= 0 $ field-or
                 decode-map-as
                   {} $ :a nil
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 , :a 0
               assert= 0 $ field-or ({}) :a 0
               assert= false $ field-or
                 {} $ :a false
                 , :a true
             :tags $ #{} :decode :unit
+        'legacy-wire-nil $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def legacy-wire-nil nil
+          :examples $ []
+          :schema $ quote $ JsNullish Never
         'option-is? $ %{} 'CodeEntry
           :doc "|True when the Option holds a value equal to expected."
           :code $ quote $ defn option-is? (value expected)
@@ -1819,9 +1644,7 @@
               (:some inner) (= inner expected)
               (:none) false
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ [] (:: 'Option 'T) 'T
-            :generics $ [] 'T
+          :schema $ quote $ Fn (Option T) T (-> Bool) (:generics T)
           :tests $ [] $ %{} 'TestEntry (:name |compares-payload)
             :code $ quote $ do
               assert= true $ option-is? (Option :some 27) 27
@@ -1836,10 +1659,9 @@
                 if (nil? value) (Option :none) (Option :some value)
               (:none) (Option :none)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'K 'V) 'K
-            :generics $ [] 'K 'V
-            :return $ :: 'Option 'V
+          :schema $ quote $ Fn (Map K V) K
+            -> $ Option V
+            :generics K V
           :tests $ [] $ %{} 'TestEntry (:name |missing-and-nil-are-absent)
             :code $ quote $ do
               assert= (Option :some 1)
@@ -1857,6 +1679,14 @@
               assert= (Option :none)
                 optional-field ({}) :a
             :tags $ #{} :decode :unit
+        'optional-wire $ %{} 'CodeEntry
+          :doc "|Project absence to the legacy wire nil at serialization and patch boundaries."
+          :code $ quote $ defn optional-wire (value)
+            match value
+              (:some item) item
+              (:none) legacy-wire-nil
+          :examples $ []
+          :schema $ quote $ Fn (Option T) (-> Dynamic) (:generics T)
         'present? $ %{} 'CodeEntry
           :doc "|True when an Option holds a non-nil value, for Options produced by get/update-in over untyped maps."
           :code $ quote $ defn present? (value)
@@ -1864,9 +1694,7 @@
               (:some inner) (non-nil? inner)
               (:none) false
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ [] $ :: 'Option 'T
-            :generics $ [] 'T
+          :schema $ quote $ Fn (Option T) (-> Bool) (:generics T)
           :tests $ [] $ %{} 'TestEntry (:name |nil-inside-some-is-not-present)
             :code $ quote $ do
               assert= true $ present? $ Option :some |k
@@ -1881,9 +1709,7 @@
               (:none)
                 raise $ str "|missing required field " k
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'V)
-            :args $ [] (:: 'Map 'K 'V) 'K
-            :generics $ [] 'K 'V
+          :schema $ quote $ Fn (Map K V) K (-> V) (:generics K V)
           :tests $ [] $ %{} 'TestEntry (:name |present-values-pass-and-missing-raises)
             :code $ quote $ do
               assert= 1 $ required-field
@@ -1897,9 +1723,7 @@
                   required-field ({}) :a
                   , false
                 fn (message)
-                  hint-fn $ {}
-                    :args $ [] 'String
-                    :return 'Bool
+                  hint-fn $ Fn String $ -> Bool
                   , true
             :tags $ #{} :decode :unit
       :ns $ %{} 'NsEntry
@@ -1909,62 +1733,48 @@
       :defs $ {}
         'DataTransferHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait DataTransferHost
-            .get-data $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.drag/DataTransferHost 'String
-              :return 'String
-            .set-data! $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.drag/DataTransferHost 'String 'String
-              :return 'Unit
+            .get-data $ Fn app.ffi.drag/DataTransferHost String $ -> String
+            .set-data! $ Fn app.ffi.drag/DataTransferHost String String $ -> Unit
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} (:get-data |getData) (:set-data! |setData)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'DragEventHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait DragEventHost (:data-transfer 'app.ffi.drag/DataTransferHost)
-            .stop-propagation! $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.drag/DragEventHost
-              :return 'Unit
-            .prevent-default! $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.drag/DragEventHost
-              :return 'Unit
+            .stop-propagation! $ Fn app.ffi.drag/DragEventHost $ -> Unit
+            .prevent-default! $ Fn app.ffi.drag/DragEventHost $ -> Unit
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} (:data-transfer |dataTransfer) (:prevent-default! |preventDefault) (:stop-propagation! |stopPropagation)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.ffi.drag
     'app.ffi.highlight $ %{} 'FileEntry
       :defs $ {}
         'HighlightHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait HighlightHost
-            .register-language! $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.highlight/HighlightHost 'String 'JsObject
-              :return 'Unit
-            .highlight $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.highlight/HighlightHost 'String 'String
-              :return 'app.ffi.highlight/HighlightResultHost
+            .register-language! $ Fn app.ffi.highlight/HighlightHost String JsObject $ -> Unit
+            .highlight $ Fn app.ffi.highlight/HighlightHost String String $ -> app.ffi.highlight/HighlightResultHost
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} $ :register-language! |registerLanguage
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'HighlightResultHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait HighlightResultHost (:value 'String)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.ffi.highlight
     'app.ffi.popup $ %{} 'FileEntry
       :defs $ {} $ 'DocumentWriterHost
         %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait DocumentWriterHost
-            .write! $ :: 'Fn $ {}
-              :args $ [] 'app.ffi.popup/DocumentWriterHost 'String
-              :return 'Unit
+            .write! $ Fn app.ffi.popup/DocumentWriterHost String $ -> Unit
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} $ :write! |write
-          :schema $ :: 'Trait
+          :schema $ quote Trait
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.ffi.popup
     'app.ffi.url $ %{} 'FileEntry
@@ -1973,47 +1783,47 @@
           :code $ quote $ deftrait ParsedUrlHost (:query 'app.ffi.url/QueryHost)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'QueryHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait QueryHost (:host 'String) (:port 'String)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.ffi.url
     'app.schema $ %{} 'FileEntry
       :defs $ {}
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states (:: 'List 'Dynamic) 'Dynamic
-            :effect/connect 'Dynamic
-            :session/connect 'Dynamic
-            :session/disconnect 'Dynamic
-            :session/remove-message 'Dynamic
-            :session/view-article 'Dynamic
-            :user/log-in 'Dynamic
-            :user/sign-up 'Dynamic
-            :user/log-out 'Dynamic
-            :router/change 'Dynamic
-            :paragraph/prepend 'Dynamic
-            :paragraph/append-to 'Dynamic
-            :paragraph/content 'Dynamic
-            :paragraph/remove 'Dynamic
-            :paragraph/move 'Dynamic
-            :paragraph/edit 'Dynamic
-            :paragraph/finish-editing 'Dynamic
-            :article/create 'Dynamic
-            :article/remove-one 'Dynamic
-            :article/title 'Dynamic
+            :states (List respo.schema/CoordKey) Dynamic
+            :effect/connect
+            :session/connect
+            :session/disconnect
+            :session/remove-message $ Map Tag Dynamic
+            :session/view-article String
+            :user/log-in Dynamic
+            :user/sign-up $ List String
+            :user/log-out
+            :router/change $ Map Tag Tag
+            :paragraph/prepend
+            :paragraph/append-to String
+            :paragraph/content $ Map Tag Dynamic
+            :paragraph/remove String
+            :paragraph/move $ Map Tag Dynamic
+            :paragraph/edit String
+            :paragraph/finish-editing String
+            :article/create String
+            :article/remove-one String
+            :article/title $ Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'EnumDef
+          :schema $ quote EnumDef
         'article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def article
             {} (:id nil)
               :paragraphs $ noted paragraph $ {}
               :title |
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'database $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def database
             {}
@@ -2021,23 +1831,22 @@
               :users $ noted user $ {}
               :articles $ noted article $ {}
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'notification $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def notification
             {} (:id nil) (:kind nil) (:text nil)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote Dynamic
         'paragraph $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def paragraph
             {} (:id nil) (:content |) (:time nil)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'read-dispatch-operation $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-dispatch-operation (value)
             if (enum? value) value $ raise |Invalid-render-operation
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Enum)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> AnyEnum)
           :tests $ []
             %{} 'TestEntry (:name |dispatch-preserves-enum-payload)
               :code $ quote $ let
@@ -2048,15 +1857,11 @@
             %{} 'TestEntry (:name |dispatch-rejects-non-enum-input)
               :code $ quote $ let
                   rejected? $ fn (value)
-                    hint-fn $ {}
-                      :args $ [] 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn Dynamic $ -> Bool
                     try
                       do (read-dispatch-operation value) false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         &= message |Invalid-render-operation
                 assert= true $ rejected? nil
                 assert= true $ rejected? $ {}
@@ -2065,9 +1870,8 @@
         'read-patch-changes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-patch-changes (value) (recollect.schema/decode-changes value)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'List 'recollect.schema/change-op
+          :schema $ quote $ Fn Dynamic
+            -> $ List recollect.schema/change-op
           :tests $ []
             %{} 'TestEntry (:name |patch-empty-and-valid-enums)
               :code $ quote $ let
@@ -2081,15 +1885,11 @@
             %{} 'TestEntry (:name |patch-rejects-invalid-shape-before-applying)
               :code $ quote $ let
                   rejected? $ fn (value)
-                    hint-fn $ {}
-                      :args $ [] 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn Dynamic $ -> Bool
                     try
                       do (read-patch-changes value) false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         , true
                 assert= true $ rejected? $ {}
                 assert= true $ rejected? $ [] 42
@@ -2112,7 +1912,7 @@
               :data $ {}
               :router nil
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote Dynamic
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
             {} (:user-id nil) (:id nil) (:nickname nil)
@@ -2121,12 +1921,12 @@
               :paragraph-id nil
               :article-id nil
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'user $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def user
             {} (:name nil) (:id nil) (:nickname nil) (:avatar nil) (:password nil)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.server $ %{} 'FileEntry
@@ -2134,7 +1934,8 @@
         '*client-caches $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *client-caches ({})
           :examples $ []
-          :schema $ :: 'Ref $ :: 'Map 'Number (:: 'Map 'Tag 'Dynamic)
+          :schema $ quote $ Ref
+            Map Number $ Map Tag Dynamic
         '*initial-db $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *initial-db
             if
@@ -2142,26 +1943,27 @@
               do (println "|Found local EDN data")
                 merge schema/database $ decode-map-as
                   parse-cirru-edn $ read-file storage-file
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
               do (println "|Found no data") schema/database
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Ref (Map Tag Dynamic)
         '*reader-reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reader-reel @*reel
           :examples $ []
-          :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
+          :schema $ quote $ Ref
+            cumulo-reel.core/ReelState $ Map Tag Dynamic
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel
             ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
-          :schema $ :: 'Ref $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
+          :schema $ quote $ Ref
+            cumulo-reel.core/ReelState $ Map Tag Dynamic
         'action-data-from-wire $ %{} 'CodeEntry
           :doc "|Wire decoder for the op payload sent by app.client/payload-to-wire. Updaters take nil op-data for payload-less ops such as :user/log-out, so a missing :data key decodes to nil as well."
           :code $ quote $ defn action-data-from-wire (action)
-            .unwrap-or (get action :data) nil
+            app.decode/optional-wire $ get action :data
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> Dynamic)
           :tests $ [] $ %{} 'TestEntry (:name |payload-or-nil)
             :code $ quote $ do
               assert= |p $ action-data-from-wire $ {} (:kind :op) (:data |p)
@@ -2177,8 +1979,7 @@
                 reset! *reel $ reel-reducer @*reel updater (:: op op-data) sid op-id op-time config/dev?
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Tag 'Dynamic 'Number
+          :schema $ quote $ Fn Tag Dynamic Number (-> Unit)
           :tests $ [] $ %{} 'TestEntry (:name |unit-result-preserves-state-transition)
             :code $ quote $ let
                 reel-before @*reel
@@ -2201,8 +2002,7 @@
                 str $ required-field now :month
                 str (required-field now :day) |-snapshot.cirru
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ []
+          :schema $ quote $ Fn (-> String)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -2221,13 +2021,11 @@
             set-interval! 600000 $ fn () $ persist-db!
             on-control-c on-exit!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ []
+          :schema $ quote $ Fn (-> Dynamic)
         'on-exit! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-exit! () (persist-db!) (; println "|exit code is...") (quit! 0)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
         'persist-db! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-db! ()
             let
@@ -2238,19 +2036,17 @@
               check-write-file! backup-path file-content
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (println "|Code updated..")
             if (not config/dev?) (raise "|reloading only happens in dev mode")
             clear-twig-caches!
             reset! *reel $ refresh-reel @*reel
-              assert-type @*initial-db $ :: 'Map 'Tag 'Dynamic
+              assert-type @*initial-db $ Map Tag Dynamic
               , replay-updater
             sync-clients! @*reader-reel
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ []
+          :schema $ quote $ Fn (-> Dynamic)
         'render-loop! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-loop! ()
             when
@@ -2259,8 +2055,7 @@
               sync-clients! @*reader-reel
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
           :tests $ [] $ %{} 'TestEntry (:name |unchanged-reel-still-returns-unit)
             :code $ quote $ let
                 original @*reader-reel
@@ -2275,9 +2070,8 @@
               updater db op (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
               raise "|replay operation must be an Enum"
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Dynamic 'Dynamic 'Dynamic 'Dynamic
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) Dynamic Dynamic Dynamic Dynamic
+            -> $ Map Tag Dynamic
         'run-server! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-server! (port)
             wss-serve! (&{} :port port)
@@ -2287,7 +2081,7 @@
                     do (dispatch! :session/connect nil sid) (println "|New client.")
                   (:message sid msg)
                     let
-                        action $ decode-map-as (parse-cirru-edn msg) (:: 'Map 'Tag 'Dynamic)
+                        action $ decode-map-as (parse-cirru-edn msg) (Map Tag Dynamic)
                       if (field-is? action :kind :op)
                         dispatch!
                           decode-map-as (required-field action :op) 'Tag
@@ -2298,15 +2092,14 @@
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'calcit.core/FfiTask)
-            :args $ [] 'Number
+          :schema $ quote $ Fn Number (-> calcit.core/FfiTask)
         'storage-file $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def storage-file
             if (empty? calcit-dirname)
               str calcit-dirname $ :storage-file config/site
               str calcit-dirname |/ $ :storage-file config/site
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'sync-clients! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sync-clients! (reel) (begin-twig-frame!)
             wss-each! $ fn (sid)
@@ -2318,9 +2111,7 @@
                     get-in db $ [] :sessions sid
                     (:ok s) (Option :some s)
                     (:err _e) (Option :none)
-                  old-store $ match (get @*client-caches sid)
-                    (:some previous-store) previous-store
-                    (:none) nil
+                  old-store $ app.decode/optional-wire $ get @*client-caches sid
                   new-store $ twig-container db session records
                   changes $ diff-twig old-store new-store $ {} (:key :id)
                 ; when config/dev? $ println "|Changes for" sid |: changes $ count records
@@ -2332,9 +2123,10 @@
             finish-twig-frame!
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] $ :: 'cumulo-reel.core/ReelState (:: 'Map 'Tag 'Dynamic)
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn
+            cumulo-reel.core/ReelState $ Map Tag Dynamic
+            -> Unit
+            :features :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
           :require (app.schema :as schema)
@@ -2358,14 +2150,14 @@
           :code $ quote $ def button
             merge ui/button $ {} (:background-color :white) (:border "|1px solid #ccc") (:color |#ccc) (:border-radius |16px)
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'link $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def link
             {} (:text-decoration :underline) (:cursor :pointer)
               :color $ hsl 240 80 80
               :font-family ui/font-fancy
           :examples $ []
-          :schema $ :: 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.style
           :require
@@ -2376,10 +2168,9 @@
         'paragraph-id-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder: the article route data carries :paragraph-id nil when the session is not editing, matching the session schema."
           :code $ quote $ defn paragraph-id-to-wire (session-map)
-            .unwrap-or (get session-map :paragraph-id) nil
+            app.decode/optional-wire $ get session-map :paragraph-id
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> Dynamic)
         'read-session-user-name $ %{} 'CodeEntry
           :doc "|Name of the user logged in on a session; guests and unknown users are absent."
           :code $ quote $ defn read-session-user-name (users session-map)
@@ -2387,11 +2178,10 @@
               (:some user-id) (read-user-name users user-id)
               (:none) (Option :none)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ []
-              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-              :: 'Map 'Tag 'Dynamic
-            :return $ :: 'Option 'String
+          :schema $ quote $ Fn
+            Map String $ Map Tag Dynamic
+            Map Tag Dynamic
+            -> $ Option String
           :tests $ [] $ %{} 'TestEntry (:name |guest-and-member-sessions)
             :code $ quote $ let
                 users $ {} $ |u
@@ -2401,7 +2191,7 @@
               assert= (Option :none)
                 read-session-user-name users $ decode-map-as
                   {} $ :user-id nil
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
               assert= (Option :none)
                 read-session-user-name users $ {}
             :tags $ #{} :projection :unit
@@ -2416,11 +2206,10 @@
                   (:ok value)
                     Option :some $ decode-map-as value 'String
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ []
-              :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-              , 'Dynamic
-            :return $ :: 'Option 'String
+          :schema $ quote $ Fn
+            Map String $ Map Tag Dynamic
+            , Dynamic
+              -> $ Option String
           :tests $ []
             %{} 'TestEntry (:name |user-name-preserves-guest-missing-and-unicode)
               :code $ quote $ let
@@ -2435,17 +2224,13 @@
             %{} 'TestEntry (:name |user-name-rejects-invalid-id-and-name)
               :code $ quote $ let
                   rejected? $ fn (users id)
-                    hint-fn $ {}
-                      :args $ []
-                        :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
-                        , 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn
+                      Map String $ Map Tag Dynamic
+                      , Dynamic $ -> Bool
                     try
                       do (read-user-name users id) false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         , true
                 assert= true $ rejected? ({}) 42
                 assert= true $ rejected?
@@ -2455,30 +2240,29 @@
         'twig-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-articles (articles)
             filter-map-kv
-              decode-map-as articles $ :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+              decode-map-as articles $ Map String $ Map Tag Dynamic
               fn (k v)
                 MapEntryDecision :keep k $ dissoc v :paragraphs
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> Dynamic)
         'twig-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-container (db session records)
             let
-                records-list $ decode-map-as records $ :: 'List 'Dynamic
-                db-map $ decode-map-as db $ :: 'Map 'Tag 'Dynamic
+                records-list $ decode-map-as records $ List Dynamic
+                db-map $ decode-map-as db $ Map Tag Dynamic
                 session-map $ decode-map-as
                   option:unwrap-or session $ {}
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 user-id $ optional-field session-map :user-id
-                router $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                router $ decode-map-as (required-field session-map :router) (Map Tag Dynamic)
                 base-data $ {}
                   :logged-in? $ .some? user-id
                   :session session-map
                   :reel-length $ count records-list
                 sessions $ decode-map-as (required-field db-map :sessions)
-                  :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
+                  Map Number $ Map Tag Dynamic
                 users $ decode-map-as (required-field db-map :users)
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
               merge base-data $ decode-map-as
                 match user-id
                   (:some logged-in-id)
@@ -2510,11 +2294,10 @@
                       :count $ count sessions
                       :color $ rand-hex-color!
                   (:none) ({})
-                :: 'Map 'Tag 'Dynamic
+                Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic (:: 'Option 'Dynamic) 'Dynamic
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn Dynamic (Option Dynamic) Dynamic
+            -> $ Map Tag Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |guest-projection-retains-session-and-record-count
@@ -2549,30 +2332,28 @@
                     twig-container nil (Option :none) ({})
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :business :unit
         'twig-focuses $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-focuses (router-id sessions users)
             let
-                sessions-map $ decode-map-as sessions $ :: 'Map 'Number (:: 'Map 'Tag 'Dynamic)
-                users-map $ decode-map-as users $ :: 'Map 'String (:: 'Map 'Tag 'Dynamic)
+                sessions-map $ decode-map-as sessions $ Map Number (Map Tag Dynamic)
+                users-map $ decode-map-as users $ Map String (Map Tag Dynamic)
                 filtered $ decode-map-as
                   filter-kv sessions-map $ fn (k session)
                     let
-                        session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                        router-map $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                        session-map $ decode-map-as session $ Map Tag Dynamic
+                        router-map $ decode-map-as (required-field session-map :router) (Map Tag Dynamic)
                       and (field-is? router-map :name :article)
                         .some? $ optional-field session-map :user-id
                         .some? $ optional-field session-map router-id
-                  :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
+                  Map Number $ Map Tag Dynamic
                 result $ -> filtered (map-entries)
                   map $ fn (entry)
-                    hint-fn $ {}
-                      :args $ [] $ :: 'MapEntry 'Number (:: 'Map 'Tag 'Dynamic)
-                      :return $ :: 'Map 'Tag 'Dynamic
+                    hint-fn $ Fn
+                      MapEntry Number $ Map Tag Dynamic
+                      -> $ Map Tag Dynamic
                     let
                         k $ :key entry
                         session-map $ :value entry
@@ -2584,53 +2365,48 @@
                           , nil
                         :sid k
                   group-by $ fn (x)
-                    hint-fn $ {}
-                      :args $ [] $ :: 'Map 'Tag 'Dynamic
-                      :return 'String
+                    hint-fn $ Fn (Map Tag Dynamic) (-> String)
                     decode-map-as (required-field x :id) 'String
               , result
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Tag 'Dynamic 'Dynamic
+          :schema $ quote $ Fn Tag Dynamic Dynamic (-> Dynamic)
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (article-id sessions users)
             let
-                sessions-map $ decode-map-as sessions $ :: 'Map 'Number (:: 'Map 'Tag 'Dynamic)
-                users-map $ decode-map-as users $ :: 'Map 'String (:: 'Map 'Tag 'Dynamic)
+                sessions-map $ decode-map-as sessions $ Map Number (Map Tag Dynamic)
+                users-map $ decode-map-as users $ Map String (Map Tag Dynamic)
               let
                   filtered $ decode-map-as
                     filter-kv sessions-map $ fn (k session)
                       let
-                          session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
-                          router $ decode-map-as (required-field session-map :router) (:: 'Map 'Tag 'Dynamic)
+                          session-map $ decode-map-as session $ Map Tag Dynamic
+                          router $ decode-map-as (required-field session-map :router) (Map Tag Dynamic)
                         and (field-is? router :name :article)
                           = article-id $ optional-field session-map :article-id
-                    :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
+                    Map Number $ Map Tag Dynamic
                 -> filtered $ .map-kv $ fn (k session)
                   let
-                      session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
+                      session-map $ decode-map-as session $ Map Tag Dynamic
                     [] k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] (:: 'Option 'Dynamic) 'Dynamic 'Dynamic
+          :schema $ quote $ Fn (Option Dynamic) Dynamic Dynamic (-> Dynamic)
         'twig-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-profile (sessions users)
             let
-                sessions-map $ decode-map-as sessions $ :: 'Map 'Number (:: 'Map 'Tag 'Dynamic)
-                users-map $ decode-map-as users $ :: 'Map 'String (:: 'Map 'Tag 'Dynamic)
+                sessions-map $ decode-map-as sessions $ Map Number (Map Tag Dynamic)
+                users-map $ decode-map-as users $ Map String (Map Tag Dynamic)
                 filtered $ decode-map-as
                   filter-kv sessions-map $ fn (k session)
                     .some? $ optional-field
-                      decode-map-as session $ :: 'Map 'Tag 'Dynamic
+                      decode-map-as session $ Map Tag Dynamic
                       , :user-id
-                  :: 'Map 'Number $ :: 'Map 'Tag 'Dynamic
+                  Map Number $ Map Tag Dynamic
               filter-map-kv filtered $ fn (k session)
                 let
-                    session-map $ decode-map-as session $ :: 'Map 'Tag 'Dynamic
+                    session-map $ decode-map-as session $ Map Tag Dynamic
                   MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic
+          :schema $ quote $ Fn Dynamic Dynamic (-> Dynamic)
         'user-name-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder for member/profile maps: the client renders a nil name as an empty span."
           :code $ quote $ defn user-name-to-wire (user-name)
@@ -2638,8 +2414,8 @@
               (:some value) value
               (:none) nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] $ :: 'Option 'String
+          :schema $ quote $ Fn (Option String)
+            -> $ JsNullish String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.twig.container
           :require
@@ -2652,8 +2428,7 @@
         %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-user (user) (dissoc user :password)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.twig.user
           :require $ recollect.twig :refer $ deftwig
@@ -2682,11 +2457,10 @@
                 (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
                 (:article/title op-data) (article/change-title db op-data sid op-id op-time)
                 _ $ do (println "|Unknown op:" op) db
-              :: 'Map 'Tag 'Dynamic
+              Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Enum 'Number 'String 'Number
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) AnyEnum Number String Number
+            -> $ Map Tag Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |session-operation-preserves-root-and-numeric-key
@@ -2700,12 +2474,12 @@
                     match (get connected :sessions)
                       (:some lookup-value) lookup-value
                       (:none) nil
-                    :: 'Map 'Number 'Dynamic
+                    Map Number Dynamic
                   session-value $ decode-map-as
                     match (get sessions 42)
                       (:some lookup-value) lookup-value
                       (:none) nil
-                    :: 'Map 'Tag 'Dynamic
+                    Map Tag Dynamic
                 assert= 42 $ match (get session-value :id)
                   (:some lookup-value) lookup-value
                   (:none) nil
@@ -2734,26 +2508,23 @@
         'change-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn change-title (db op-data sid op-id op-time)
             let
-                op-map $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
+                op-map $ decode-map-as op-data $ Map Tag Dynamic
               assoc-in db
                 [] :articles (required-field op-map :id) :title
                 required-field op-map :title
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create (db op-data sid op-id op-time)
             assoc-in db ([] :articles op-id)
               merge schema/article $ {} (:id op-id) (:title op-data)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             update db :articles $ fn (articles) (dissoc articles op-data)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.article
           :require (app.schema :as schema)
@@ -2771,7 +2542,7 @@
                   result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 new-key $ bisection-util/key-after paragraphs base-key
               -> db
                 update-in ([] :articles article-id :paragraphs)
@@ -2781,8 +2552,7 @@
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
           :tests $ []
             %{} 'TestEntry (:name |rejects-non-string-key-before-db-access)
               :code $ quote $ assert= true
@@ -2791,9 +2561,7 @@
                     append-to ({}) 9 7 |new-id 42
                     , false
                   fn (message)
-                    hint-fn $ {}
-                      :args $ [] 'String
-                      :return 'Bool
+                    hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :text-boundary :unit
             %{} 'TestEntry
@@ -2814,7 +2582,7 @@
                   paragraphs $ result:unwrap-or
                     get-in next-db $ [] :articles |a :paragraphs
                     , nil
-                  paragraphs-map $ decode-map-as paragraphs $ :: 'Map 'String 'Dynamic
+                  paragraphs-map $ decode-map-as paragraphs $ Map String Dynamic
                 assert= 2 $ count paragraphs-map
                 assert= original $ result:unwrap-or
                   get-in next-db $ [] :articles |a :paragraphs base-key
@@ -2840,18 +2608,16 @@
                 assoc-in ([] :articles article-id :paragraphs paragraph-id :time) op-time
                 assoc-in ([] :sessions sid :paragraph-id) paragraph-id
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'finish-editing $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn finish-editing (db op-data sid op-id op-time)
             -> db $ assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'move $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn move (db op-data sid op-id op-time)
             let
-                op-map $ decode-map-as op-data $ :: 'Map 'Tag 'String
+                op-map $ decode-map-as op-data $ Map Tag String
                 target-key $ match (get op-map :target)
                   (:some lookup-value) lookup-value
                   (:none) (raise "|paragraph move requires :target")
@@ -2865,7 +2631,7 @@
                   result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
               match (get paragraphs target-key)
                 (:none) db
                 (:some paragraph)
@@ -2885,8 +2651,7 @@
                         fn (old-key)
                           if (present? old-key) new-key nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
           :tests $ [] $ %{} 'TestEntry
             :name |move-preserves-content-and-updates-numeric-session-cursor
             :code $ quote $ let
@@ -2903,7 +2668,7 @@
                 paragraphs $ decode-map-as
                     get-in next-db $ [] :articles |article :paragraphs
                     , .unwrap-or nil
-                  :: 'Map 'String 'Dynamic
+                  Map String Dynamic
                 cursor $ decode-map-as
                     get-in next-db $ [] :sessions 7 :paragraph-id
                     , .unwrap-or nil
@@ -2933,7 +2698,7 @@
                   result:unwrap-or
                     get-in db $ [] :articles article-id :paragraphs
                     {}
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 new-key $ bisection-util/key-prepend paragraphs
               -> db
                 update-in ([] :articles article-id :paragraphs)
@@ -2943,8 +2708,7 @@
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             let
@@ -2959,8 +2723,7 @@
                       , op-data
                 assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
           :tests $ []
             %{} 'TestEntry
               :name |removes-only-selected-paragraph-and-clears-numeric-session-cursor
@@ -3043,7 +2806,7 @@
         'update-content $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn update-content (db op-data sid op-id op-time)
             let
-                op-map $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
+                op-map $ decode-map-as op-data $ Map Tag Dynamic
                 article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
@@ -3055,8 +2818,7 @@
                     assoc :time $ required-field op-map :time
                     assoc :content $ required-field op-map :text
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
           :require (bisection-key.util :as bisection-util) (app.schema :as schema)
@@ -3067,8 +2829,7 @@
           :code $ quote $ defn change (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :router) op-data
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.router
     'app.updater.session $ %{} 'FileEntry
@@ -3078,29 +2839,26 @@
             assoc-in db ([] :sessions session-id)
               merge schema/session $ {} $ :id session-id
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'disconnect $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn disconnect (db op-data session-id op-id op-time)
             update db :sessions $ fn (session) (dissoc session session-id)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'remove-message $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-message (db op-data sid op-id op-time)
             let
-                payload $ decode-map-as op-data $ :: 'Map 'Tag 'Dynamic
+                payload $ decode-map-as op-data $ Map Tag Dynamic
                 message-id $ decode-map-as (required-field payload :id) 'String
               update-in db ([] :sessions sid :messages)
                 fn (messages)
                   dissoc
                     decode-map-as
                       option:unwrap-or messages $ {}
-                      :: 'Map 'String 'Dynamic
+                      Map String Dynamic
                     , message-id
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
           :tests $ []
             %{} 'TestEntry
               :name |removal-preserves-numeric-session-and-other-messages
@@ -3141,17 +2899,13 @@
             %{} 'TestEntry (:name |removal-rejects-invalid-payload-and-message-key)
               :code $ quote $ let
                   rejected? $ fn (payload)
-                    hint-fn $ {}
-                      :args $ [] 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn Dynamic $ -> Bool
                     try
                       do
                         remove-message ({}) payload 42 |op 1
                         , false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         , true
                 assert= true $ rejected? nil
                 assert= true $ rejected? $ {}
@@ -3168,8 +2922,7 @@
                   assoc :paragraph-id nil
                   assoc :router $ {} $ :name :article
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.session
           :require (app.schema :as schema)
@@ -3177,65 +2930,62 @@
     'app.updater.user $ %{} 'FileEntry
       :defs $ {}
         'LoginCredentials $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct LoginCredentials (:username 'String) (:password 'String)
+          :code $ quote $ defstruct LoginCredentials (:username String) (:password String)
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'log-in $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-in (db op-data sid op-id op-time)
             let
-                db-map $ decode-map-as db $ :: 'Map 'Tag 'Dynamic
+                db-map $ decode-map-as db $ Map Tag Dynamic
                 credentials $ read-login-credentials op-data
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
                   option:unwrap-or (get db-map :users) ({})
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 maybe-user $ -> users (distinct-values) (.to-list)
                   find $ fn (user)
                     field-is?
-                      decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                      decode-map-as user $ Map Tag Dynamic
                       , :name username
               update-in db-map ([] :sessions sid)
                 fn (session)
                   let
                       session-map $ decode-map-as
                         option:unwrap-or session $ {}
-                        :: 'Map 'Tag 'Dynamic
+                        Map Tag Dynamic
                     if (option:some? maybe-user)
                       let
-                          user-map $ decode-map-as (option:unwrap maybe-user) (:: 'Map 'Tag 'Dynamic)
+                          user-map $ decode-map-as (option:unwrap maybe-user) (Map Tag Dynamic)
                         if
                           field-is? user-map :password $ md5 password
                           assoc session-map :user-id $ required-field user-map :id
                           update session-map :messages $ fn (messages)
                             assoc
-                              decode-map-as messages $ :: 'Map 'String 'Dynamic
+                              decode-map-as messages $ Map String Dynamic
                               , op-id $ {} (:id op-id)
                                 :text $ str "|Wrong password for " username
                       update session-map :messages $ fn (messages)
                         assoc
-                          decode-map-as messages $ :: 'Map 'String 'Dynamic
+                          decode-map-as messages $ Map String Dynamic
                           , op-id $ {} (:id op-id)
                             :text $ str "|No user named: " username
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :user-id) nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'read-login-credentials $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-credentials (value)
             let
-                fields $ decode-map-as value $ :: 'List 'Dynamic
+                fields $ decode-map-as value $ List Dynamic
                 username $ decode-map-as (&list:nth fields 0) 'String
                 password $ decode-map-as (&list:nth fields 1) 'String
               LoginCredentials :username username :password password
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.updater.user/LoginCredentials)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.updater.user/LoginCredentials)
           :tests $ []
             %{} 'TestEntry (:name |credentials-strings-and-extra-fields)
               :code $ quote $ let
@@ -3254,15 +3004,11 @@
             %{} 'TestEntry (:name |credentials-reject-invalid-fields)
               :code $ quote $ let
                   rejected? $ fn (value)
-                    hint-fn $ {}
-                      :args $ [] 'Dynamic
-                      :return 'Bool
+                    hint-fn $ Fn Dynamic $ -> Bool
                     try
                       do (read-login-credentials value) false
                       fn (message)
-                        hint-fn $ {}
-                          :args $ [] 'String
-                          :return 'Bool
+                        hint-fn $ Fn String $ -> Bool
                         , true
                 assert= true $ rejected? $ [] 42 |password
                 assert= true $ rejected? $ [] |user nil
@@ -3273,18 +3019,18 @@
         'sign-up $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn sign-up (db op-data sid op-id op-time)
             let
-                db-map $ decode-map-as db $ :: 'Map 'Tag 'Dynamic
+                db-map $ decode-map-as db $ Map Tag Dynamic
                 credentials $ read-login-credentials op-data
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
                   option:unwrap-or (get db-map :users) ({})
-                  :: 'Map 'String $ :: 'Map 'Tag 'Dynamic
+                  Map String $ Map Tag Dynamic
                 maybe-user $ find
                   .to-list $ distinct-values users
                   fn (user)
                     field-is?
-                      decode-map-as user $ :: 'Map 'Tag 'Dynamic
+                      decode-map-as user $ Map Tag Dynamic
                       , :name username
               if (option:some? maybe-user)
                 update-in db-map ([] :sessions sid :messages)
@@ -3300,8 +3046,7 @@
                       :password $ md5 password
                       :avatar nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ [] 'Dynamic 'Dynamic 'Number 'String 'Number
+          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
           :require
@@ -3313,23 +3058,18 @@
           :doc "|Adapts the app dispatch to the Enum callback that respo-alerts plugins call; alerts only emit :states."
           :code $ quote $ defn alert-dispatch (d!)
             fn (op)
-              hint-fn $ {}
-                :args $ [] 'Enum
-                :return 'Unit
+              hint-fn $ Fn AnyEnum $ -> Unit
               match op
                 (:states cursor state)
                   d! $ :: :states
-                    decode-map-as cursor $ :: 'List 'Dynamic
+                    decode-map-as cursor $ List respo.schema/CoordKey
                     , state
                 _ $ eprintln "|Unexpected op from alerts:" op
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ [] '*dispatch-op
-            :return $ :: 'Fn $ {} (:return 'Unit)
-              :args $ [] 'Enum
+          :schema $ quote $ Fn
+            Fn *dispatch-op $ -> Unit
+            -> $ Fn AnyEnum $ -> Unit
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
             set-timeout!
@@ -3343,20 +3083,16 @@
               , duration
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Number 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Number String (-> Unit) (:features :js-ffi)
         'filter-kv $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn filter-kv (xs f)
             filter-map-kv xs $ fn (k v)
               if (f k v) (MapEntryDecision :keep k v) (MapEntryDecision :drop)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'K 'V)
-              :: 'Fn $ {} (:return 'Bool)
-                :args $ [] 'K 'V
-            :generics $ [] 'K 'V
-            :return $ :: 'Map 'K 'V
+          :schema $ quote $ Fn (Map K V)
+            Fn K V $ -> Bool
+            -> $ Map K V
+            :generics K V
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.util
           :require $ js-ffi.browser :refer $ query-selector set-timeout!
