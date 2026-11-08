@@ -12,23 +12,12 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
-当前 CLI / `@calcit/procs` 精确配对 0.31.0。本次只更新工具链配对，
-保留已合并的服务端 ReelState 参数修复及 npm 依赖更新。客户端每次渲染将开放 store
-解码一次为 StoreView，组件使用带类型字段或 Option；twig 和 updater 在读取处检查字段。
-false、0 与合法默认值仍保留，wire 和存储格式不变；nil 仅保留在现有协议边界。
-缺失目标段落的移动保持数据库不变，缺少标题/正文必需字段的操作明确报错，避免写入 nil。
-已登录但路由缺少 data 时使用空 Map 渲染；存在的颜色、路由名和段落 ID 会校验类型。
-段落排序使用类型化 `MapEntry` 保留 String key。拖放缺少 target/base 时明确报错；
-同时修复原 `update` 把嵌套 session 路径当单键、移动后未更新编辑光标的问题，
-改用 `update-in` 并处理 Option 输入，Number session key 不变。
-排序键依赖使用正式 Bisection Key 0.0.32，并同步正式 std 0.2.43，避免严格图中
-根依赖仍固定旧 std；不使用候选分支或 hash。实时协作依赖同步正式 tag 的
-Cumulo Reel 0.0.55、Recollect 0.0.62、WS-EDN 0.0.41、Respo Message 0.0.37，
-并同步 Respo 0.16.122、UI 0.7.41、Alerts 0.10.55、Markdown 0.4.56、Feather 0.4.29。
-没有模块或业务引用的 Memof 从根依赖和双入口配置移除，不改其 Anchor 合同。
-15 处旧调用迁移到 `defref`、`match`、`distinct-values` 和 `set-interval!`；
-保留 Set 去重、分支默认值及定时器参数语义。原断言、数据库、部署目录与 COS 前缀不变。
-此次依赖更新不代表服务器已经准备好，也不触发生产合并部署。
+CLI 与 `@calcit/procs` 配对使用 Calcit 0.38.0。升级后请重新安装依赖、构建并刷新页面。
+客户端使用 RespoEvent 读取输入，状态游标使用 CoordKey union，文章、段落和登录操作保留各自载荷类型。
+客户端每次渲染仍将开放 store 解码为 StoreView，twig 和 updater 在读取处校验字段。
+前后端沿用原 Cirru EDN 消息和存储格式。无载荷操作在发送时仍编码为 `:data nil`，Number session key 保持原合同。
+
+当前迁移依赖图见 `deps.cirru`。前端资源和服务端脚本使用各自的原部署入口。
 
 ```sh
 caps --strict --ci
