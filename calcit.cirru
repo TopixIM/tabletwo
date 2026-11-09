@@ -225,9 +225,11 @@
                           fn (result)
                             hint-fn $ Fn Dynamic $ -> Unit
                             println "|as result:" result
-                            when
-                              not $ blank? $ decode-map-as result 'String
-                              d! $ :: :article/title $ {} (:id article-id) (:title result)
+                            let
+                                title $ decode-map-as result String
+                              when
+                                not $ blank? title
+                                d! $ app.schema/Op :article/title $ {} (:id article-id) (:title title)
                             , &unit
                         , &unit
                     space-x 16
@@ -738,7 +740,7 @@
                                 value $ decode-map-as (:value e) 'String
                                 state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
                               d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
-                              d! $ :: :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
+                              d! $ app.schema/Op :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
                               , &unit
                           , :on-keydown $ fn (e d!)
                             hint-fn $ Fn respo.schema/RespoEvent
@@ -1247,7 +1249,8 @@
                           data $ data-transfer .get-data |text
                         event .stop-propagation!
                         if (not= sort-id data)
-                          d! $ :: :paragraph/move $ {} (:target data) (:base sort-id)
+                          d! $ app.schema/Op :paragraph/move $ {} (:target data)
+                            :base $ decode-map-as sort-id String
                       , &unit
                     , :on-dragover
                       fn (e d!)
@@ -1807,16 +1810,19 @@
             :router/change $ Map Tag Tag
             :paragraph/prepend
             :paragraph/append-to String
-            :paragraph/content $ Map Tag Dynamic
+            :paragraph/content $ Map Tag app.schema/ParagraphEditField
             :paragraph/remove String
-            :paragraph/move $ Map Tag Dynamic
+            :paragraph/move $ Map Tag String
             :paragraph/edit String
             :paragraph/finish-editing String
             :article/create String
             :article/remove-one String
-            :article/title $ Map Tag Dynamic
+            :article/title $ Map Tag String
           :examples $ []
           :schema $ quote EnumDef
+        'ParagraphEditField $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ParagraphEditField String Number
+          :examples $ []
         'article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def article
             {} (:id nil)
