@@ -57,7 +57,7 @@
               (:effect/connect) (connect!)
               _ $ ws-send! $ {} (:kind :op)
                 :op $ &enum:nth action 0
-                :data $ payload-to-wire $ &enum:params action
+                :data $ payload-to-wire action
             , &unit
           :examples $ []
           :schema $ quote $ Fn app.schema/Op (-> Unit) (:features :js-ffi)
@@ -113,15 +113,21 @@
           :examples $ []
           :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi)
         'payload-to-wire $ %{} 'CodeEntry
-          :doc "|Wire encoder for an action payload. An action without parameters is sent as :data nil; the server decodes it back with action-data-from-wire, and updaters treat nil op-data as no payload."
-          :code $ quote $ defn payload-to-wire (params)
-            app.decode/optional-wire $ first params
+          :doc "|Encode the existing :data field, keeping a notification ID in its legacy Map and empty payloads as nil."
+          :code $ quote $ defn payload-to-wire (action)
+            match action
+              (:session/remove-message id)
+                {} $ :id id
+              _ $ app.decode/optional-wire $ first (&enum:params action)
           :examples $ []
-          :schema $ quote $ Fn (List T) (-> Dynamic) (:generics T)
+          :schema $ quote $ Fn app.schema/Op (-> Dynamic)
           :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
             :code $ quote $ do
-              assert= |a $ payload-to-wire $ [] |a |b
-              assert= nil $ payload-to-wire $ []
+              assert= |a $ payload-to-wire $ app.schema/Op :paragraph/append-to |a
+              assert= nil $ payload-to-wire $ app.schema/Op :user/log-out
+              assert=
+                {} $ :id |m-1
+                payload-to-wire $ app.schema/Op :session/remove-message |m-1
             :tags $ #{} :operation :unit
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
@@ -445,7 +451,7 @@
                       (:none) ({})
                     comp-messages (:messages view) ({})
                       fn (info d!)
-                        d! $ :: :session/remove-message info
+                        d! $ app.schema/Op :session/remove-message $ app.decode/read-message-id info
                     comp-status-color $ :color view
                     if dev?
                       Option :some $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
@@ -1704,6 +1710,12 @@
               assert= false $ present? $ Option :some nil
               assert= false $ present? $ Option :none
             :tags $ #{} :decode :unit
+        'read-message-id $ %{} 'CodeEntry
+          :doc "|Read the String ID from a legacy notification payload, allowing extra metadata."
+          :code $ quote $ defn read-message-id (payload)
+            decode-map-as (required-field payload :id) 'String
+          :examples $ []
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> String)
         'required-field $ %{} 'CodeEntry
           :doc "|Read a field the producer always sends. A missing key raises with the field name; a present value, even nil, is returned for the caller to decode."
           :code $ quote $ defn required-field (m k)
@@ -1802,7 +1814,7 @@
             :effect/connect
             :session/connect
             :session/disconnect
-            :session/remove-message $ Map Tag Dynamic
+            :session/remove-message String
             :session/view-article String
             :user/log-in Dynamic
             :user/sign-up $ List String
@@ -2444,13 +2456,17 @@
           :code $ quote $ defn updater (db op sid op-id op-time)
             decode-map-as
               match op
-                (:session/connect op-data) (session/connect db op-data sid op-id op-time)
-                (:session/disconnect op-data) (session/disconnect db op-data sid op-id op-time)
-                (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
+                (:session/connect _) (session/connect db sid)
+                (:session/disconnect _) (session/disconnect db sid)
+                (:session/remove-message op-data)
+                  session/remove-message db
+                    app.decode/read-message-id $ decode-map-as op-data $ Map Tag Dynamic
+                    , sid
                 (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
                 (:user/sign-up op-data) (user/sign-up db op-data sid op-id op-time)
                 (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
-                (:session/view-article op-data) (session/view-article db op-data sid op-id op-time)
+                (:session/view-article op-data)
+                  session/view-article db (decode-map-as op-data 'String) sid
                 (:router/change op-data) (router/change db op-data sid op-id op-time)
                 (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
                 (:paragraph/append-to op-data) (paragraph/append-to db op-data sid op-id op-time)
@@ -2506,6 +2522,42 @@
                     :users $ {}
                 assert= db $ updater db (:: :unknown nil) 42 |op 1
               :tags $ #{} :unit :updater
+            %{} 'TestEntry
+              :name |removal-preserves-numeric-session-and-other-messages
+              :code $ quote $ let
+                  removed-message $ {} (:id |m-1) (:text "|错误🐈")
+                  second $ {} (:id |m-2) (:text "|保留")
+                  other-session $ {} $ :messages
+                    {} $ |m-3 second
+                  current-session $ {}
+                    :cursor $ [] :article 42
+                    :messages $ {} (|m-1 removed-message) (|m-2 second)
+                  db $ {}
+                    :users $ {} $ |u-1
+                      {} $ :name |Ada
+                    :sessions $ {} (42 current-session) (7 other-session)
+                  expected $ assoc-in db ([] :sessions 42 :messages)
+                    {} $ |m-2 second
+                assert= expected $ updater db
+                  :: :session/remove-message $ {} (:id |m-1) (:index 1) (:time 3)
+                  , 42 |op 1
+              :tags $ #{} :message :unit
+            %{} 'TestEntry (:name |removal-rejects-invalid-payload-and-message-key)
+              :code $ quote $ let
+                  rejected? $ fn (payload)
+                    hint-fn $ Fn Dynamic $ -> Bool
+                    try
+                      do
+                        updater ({}) (:: :session/remove-message payload) 42 |op 1
+                        , false
+                      fn (message)
+                        hint-fn $ Fn String $ -> Bool
+                        , true
+                assert= true $ rejected? nil
+                assert= true $ rejected? $ {}
+                assert= true $ rejected? $ {} (:id 42)
+                assert= true $ rejected? $ {} (:id nil)
+              :tags $ #{} :message :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article)
@@ -2841,98 +2893,57 @@
     'app.updater.session $ %{} 'FileEntry
       :defs $ {}
         'connect $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn connect (db op-data session-id op-id op-time)
+          :code $ quote $ defn connect (db session-id)
             assoc-in db ([] :sessions session-id)
               merge schema/session $ {} $ :id session-id
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'disconnect $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn disconnect (db op-data session-id op-id op-time)
+          :code $ quote $ defn disconnect (db session-id)
             update db :sessions $ fn (session) (dissoc session session-id)
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'remove-message $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn remove-message (db op-data sid op-id op-time)
-            let
-                payload $ decode-map-as op-data $ Map Tag Dynamic
-                message-id $ decode-map-as (required-field payload :id) 'String
-              update-in db ([] :sessions sid :messages)
-                fn (messages)
-                  dissoc
-                    decode-map-as
-                      option:unwrap-or messages $ {}
-                      Map String Dynamic
-                    , message-id
+          :code $ quote $ defn remove-message (db message-id sid)
+            update-in db ([] :sessions sid :messages)
+              fn (messages)
+                dissoc
+                  decode-map-as
+                    option:unwrap-or messages $ {}
+                    Map String Dynamic
+                  , message-id
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
-          :tests $ []
-            %{} 'TestEntry
-              :name |removal-preserves-numeric-session-and-other-messages
-              :code $ quote $ let
-                  removed-message $ {} (:id |m-1) (:text "|错误🐈")
-                  second $ {} (:id |m-2) (:text "|保留")
-                  other-session $ {} $ :messages
-                    {} $ |m-3 second
-                  current-session $ {}
-                    :cursor $ [] :article 42
-                    :messages $ {} (|m-1 removed-message) (|m-2 second)
-                  db $ {}
-                    :users $ {} $ |u-1
-                      {} $ :name |Ada
-                    :sessions $ {} (42 current-session) (7 other-session)
-                  expected $ assoc-in db ([] :sessions 42 :messages)
-                    {} $ |m-2 second
-                assert= expected $ remove-message db
-                  {} $ :id |m-1
-                  , 42 |op 1
-              :tags $ #{} :message :unit
-            %{} 'TestEntry (:name |missing-message-preserves-existing-data)
-              :code $ quote $ let
-                  message $ {} (:id |m-1) (:text "|保留")
-                  db $ {} $ :sessions
-                    {} $ 42 $ {}
-                      :messages $ {} $ |m-1 message
-                assert= db $ remove-message db
-                  {} $ :id |missing
-                  , 42 |op 1
-                assert=
-                  {} $ :sessions $ {}
-                    42 $ {} $ :messages ({})
-                  remove-message ({})
-                    {} $ :id |missing
-                    , 42 |op 1
-              :tags $ #{} :message :unit
-            %{} 'TestEntry (:name |removal-rejects-invalid-payload-and-message-key)
-              :code $ quote $ let
-                  rejected? $ fn (payload)
-                    hint-fn $ Fn Dynamic $ -> Bool
-                    try
-                      do
-                        remove-message ({}) payload 42 |op 1
-                        , false
-                      fn (message)
-                        hint-fn $ Fn String $ -> Bool
-                        , true
-                assert= true $ rejected? nil
-                assert= true $ rejected? $ {}
-                assert= true $ rejected? $ {} (:id 42)
-                assert= true $ rejected? $ {} (:id nil)
-              :tags $ #{} :message :unit
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number
+            -> $ Map Tag Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |missing-message-preserves-existing-data)
+            :code $ quote $ let
+                message $ {} (:id |m-1) (:text "|保留")
+                db $ {} $ :sessions
+                  {} $ 42 $ {}
+                    :messages $ {} $ |m-1 message
+              assert= db $ remove-message db |missing 42
+              assert=
+                {} $ :sessions $ {}
+                  42 $ {} $ :messages ({})
+                remove-message ({}) |missing 42
+            :tags $ #{} :message :unit
         'view-article $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn view-article (db op-data sid op-id op-time)
+          :code $ quote $ defn view-article (db article-id sid)
             update-in db ([] :sessions sid)
               fn (session)
                 ->
                   option:unwrap-or session $ {}
-                  assoc :article-id op-data
+                  assoc :article-id article-id
                   assoc :paragraph-id nil
                   assoc :router $ {} $ :name :article
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.session
-          :require (app.schema :as schema)
-            app.decode :refer $ required-field
+          :require $ app.schema :as schema
     'app.updater.user $ %{} 'FileEntry
       :defs $ {}
         'LoginCredentials $ %{} 'CodeEntry (:doc |)
