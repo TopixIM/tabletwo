@@ -2493,10 +2493,12 @@
                   session/view-article db (decode-map-as op-data 'String) sid
                 (:router/change op-data) (router/change db op-data sid op-id op-time)
                 (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
-                (:paragraph/append-to op-data) (paragraph/append-to db op-data sid op-id op-time)
+                (:paragraph/append-to op-data)
+                  paragraph/append-to db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/content op-data) (paragraph/update-content db op-data sid op-id op-time)
                 (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
-                (:paragraph/move op-data) (paragraph/move db op-data sid op-id op-time)
+                (:paragraph/move op-data)
+                  paragraph/move db (paragraph/read-move-keys op-data) sid
                 (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
                 (:paragraph/finish-editing op-data) (paragraph/finish-editing db op-data sid op-id op-time)
                 (:article/create op-data) (article/create db op-data sid op-id op-time)
@@ -2583,6 +2585,87 @@
                 assert= true $ rejected? $ {} (:id 42)
                 assert= true $ rejected? $ {} (:id nil)
               :tags $ #{} :message :unit
+            %{} 'TestEntry
+              :name |move-preserves-content-and-updates-numeric-session-cursor
+              :code $ quote $ let
+                  original $ {}
+                    :sessions $ {} $ 7
+                      {} (:article-id |article) (:paragraph-id |b)
+                    :articles $ {} $ |article
+                      {} $ :paragraphs $ {}
+                        |a $ {} (:content |first) (:time 0)
+                        |b $ {} (:content |second) (:time 0)
+                  next-db $ updater original
+                    :: :paragraph/move $ {} (:target |b) (:base |a)
+                    , 7 |move-op 1
+                  paragraphs $ decode-map-as
+                      get-in next-db $ [] :articles |article :paragraphs
+                      , .unwrap-or nil
+                    Map String Dynamic
+                  cursor $ decode-map-as
+                      get-in next-db $ [] :sessions 7 :paragraph-id
+                      , .unwrap-or nil
+                    , 'String
+                  rejected? $ fn (payload)
+                    try
+                      do
+                        updater original (:: :paragraph/move payload) 7 |move-op 1
+                        , false
+                      fn (message) true
+                assert= 2 $ paragraphs.len
+                assert= false $ paragraphs.contains-key? |b
+                assert= |second $
+                  get-in paragraphs $ [] cursor :content
+                  , .unwrap-or nil
+                assert= |first $
+                  get-in paragraphs $ [] |a :content
+                  , .unwrap-or nil
+                assert= true $ rejected? $ {} (:base |a)
+                assert= true $ rejected? $ {} (:target |b)
+              :tags $ #{} :business :unit
+            %{} 'TestEntry (:name |rejects-non-string-key-before-db-access)
+              :code $ quote $ assert= true
+                try
+                  do
+                    updater ({}) (:: :paragraph/append-to 9) 7 |new-id 42
+                    , false
+                  fn (message)
+                    hint-fn $ Fn String $ -> Bool
+                    , true
+              :tags $ #{} :text-boundary :unit
+            %{} 'TestEntry
+              :name |preserves-existing-paragraph-and-updates-numeric-session-cursor
+              :code $ quote $ let
+                  base-key bisection-key.core/mid-id
+                  original $ {} (:id |existing-id) (:time 1) (:content "|原文🌱")
+                  db $ {}
+                    :sessions $ {} $ 7
+                      {} (:article-id |a) (:paragraph-id base-key)
+                    :users $ {}
+                    :articles $ {} $ |a
+                      {} $ :paragraphs $ {} (base-key original)
+                  next-db $ updater db (:: :paragraph/append-to base-key) 7 |new-id 42
+                  new-key $ result:unwrap-or
+                    get-in next-db $ [] :sessions 7 :paragraph-id
+                    , nil
+                  paragraphs $ result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs
+                    , nil
+                  paragraphs-map $ decode-map-as paragraphs $ Map String Dynamic
+                assert= 2 $ count paragraphs-map
+                assert= original $ result:unwrap-or
+                  get-in next-db $ [] :articles |a :paragraphs base-key
+                  , nil
+                assert= false $ = base-key new-key
+                assert=
+                  {} (:id |new-id) (:time 42) (:content |)
+                  result:unwrap-or
+                    get-in next-db $ [] :articles |a :paragraphs new-key
+                    , nil
+                assert= original $ result:unwrap-or
+                  get-in db $ [] :articles |a :paragraphs base-key
+                  , nil
+              :tags $ #{} :business :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article)
@@ -2614,10 +2697,13 @@
             app.decode :refer $ required-field
     'app.updater.paragraph $ %{} 'FileEntry
       :defs $ {}
+        'MoveKeys $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct MoveKeys (:target String) (:base String)
+          :examples $ []
+          :schema $ quote StructDef
         'append-to $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn append-to (db op-data sid op-id op-time)
+          :code $ quote $ defn append-to (db base-key sid op-id op-time)
             let
-                base-key $ decode-map-as op-data 'String
                 article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
@@ -2635,51 +2721,8 @@
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
-          :tests $ []
-            %{} 'TestEntry (:name |rejects-non-string-key-before-db-access)
-              :code $ quote $ assert= true
-                try
-                  do
-                    append-to ({}) 9 7 |new-id 42
-                    , false
-                  fn (message)
-                    hint-fn $ Fn String $ -> Bool
-                    , true
-              :tags $ #{} :text-boundary :unit
-            %{} 'TestEntry
-              :name |preserves-existing-paragraph-and-updates-numeric-session-cursor
-              :code $ quote $ let
-                  base-key bisection-key.core/mid-id
-                  original $ {} (:id |existing-id) (:time 1) (:content "|原文🌱")
-                  db $ {}
-                    :sessions $ {} $ 7
-                      {} (:article-id |a) (:paragraph-id base-key)
-                    :users $ {}
-                    :articles $ {} $ |a
-                      {} $ :paragraphs $ {} (base-key original)
-                  next-db $ append-to db base-key 7 |new-id 42
-                  new-key $ result:unwrap-or
-                    get-in next-db $ [] :sessions 7 :paragraph-id
-                    , nil
-                  paragraphs $ result:unwrap-or
-                    get-in next-db $ [] :articles |a :paragraphs
-                    , nil
-                  paragraphs-map $ decode-map-as paragraphs $ Map String Dynamic
-                assert= 2 $ count paragraphs-map
-                assert= original $ result:unwrap-or
-                  get-in next-db $ [] :articles |a :paragraphs base-key
-                  , nil
-                assert= false $ = base-key new-key
-                assert=
-                  {} (:id |new-id) (:time 42) (:content |)
-                  result:unwrap-or
-                    get-in next-db $ [] :articles |a :paragraphs new-key
-                    , nil
-                assert= original $ result:unwrap-or
-                  get-in db $ [] :articles |a :paragraphs base-key
-                  , nil
-              :tags $ #{} :business :unit
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
         'edit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn edit (db op-data sid op-id op-time)
             let
@@ -2698,15 +2741,10 @@
           :examples $ []
           :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
         'move $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn move (db op-data sid op-id op-time)
+          :code $ quote $ defn move (db move-keys sid)
             let
-                op-map $ decode-map-as op-data $ Map Tag String
-                target-key $ match (get op-map :target)
-                  (:some lookup-value) lookup-value
-                  (:none) (raise "|paragraph move requires :target")
-                base-key $ match (get op-map :base)
-                  (:some lookup-value) lookup-value
-                  (:none) (raise "|paragraph move requires :base")
+                target-key $ :target move-keys
+                base-key $ :base move-keys
                 article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
@@ -2734,43 +2772,8 @@
                         fn (old-key)
                           if (present? old-key) new-key nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
-          :tests $ [] $ %{} 'TestEntry
-            :name |move-preserves-content-and-updates-numeric-session-cursor
-            :code $ quote $ let
-                original $ {}
-                  :sessions $ {} $ 7
-                    {} (:article-id |article) (:paragraph-id |b)
-                  :articles $ {} $ |article
-                    {} $ :paragraphs $ {}
-                      |a $ {} (:content |first) (:time 0)
-                      |b $ {} (:content |second) (:time 0)
-                next-db $ move original
-                  {} (:target |b) (:base |a)
-                  , 7 |move-op 1
-                paragraphs $ decode-map-as
-                    get-in next-db $ [] :articles |article :paragraphs
-                    , .unwrap-or nil
-                  Map String Dynamic
-                cursor $ decode-map-as
-                    get-in next-db $ [] :sessions 7 :paragraph-id
-                    , .unwrap-or nil
-                  , 'String
-                rejected? $ fn (payload)
-                  try
-                    do (move original payload 7 |move-op 1) false
-                    fn (message) true
-              assert= 2 $ paragraphs.len
-              assert= false $ paragraphs.contains-key? |b
-              assert= |second $
-                get-in paragraphs $ [] cursor :content
-                , .unwrap-or nil
-              assert= |first $
-                get-in paragraphs $ [] |a :content
-                , .unwrap-or nil
-              assert= true $ rejected? $ {} (:base |a)
-              assert= true $ rejected? $ {} (:target |b)
-            :tags $ #{} :business :unit
+          :schema $ quote $ Fn (Map Tag Dynamic) app.updater.paragraph/MoveKeys Number
+            -> $ Map Tag Dynamic
         'para-prepend $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn para-prepend (db op-data sid op-id op-time)
             let
@@ -2792,6 +2795,19 @@
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
           :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+        'read-move-keys $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-move-keys (raw)
+            let
+                fields $ decode-map-as raw $ Map Tag String
+                target-key $ match (get fields :target)
+                  (:some value) value
+                  (:none) (raise "|paragraph move requires :target")
+                base-key $ match (get fields :base)
+                  (:some value) value
+                  (:none) (raise "|paragraph move requires :base")
+              MoveKeys :target target-key :base base-key
+          :examples $ []
+          :schema $ quote $ Fn Dynamic (-> app.updater.paragraph/MoveKeys)
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             let
