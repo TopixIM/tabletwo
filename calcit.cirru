@@ -1816,7 +1816,7 @@
             :session/disconnect
             :session/remove-message String
             :session/view-article String
-            :user/log-in Dynamic
+            :user/log-in $ List String
             :user/sign-up $ List String
             :user/log-out
             :router/change $ Map Tag Tag
@@ -1864,7 +1864,7 @@
           :code $ quote $ defn read-dispatch-operation (value)
             if (enum? value) value $ raise |Invalid-render-operation
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> AnyEnum)
+          :schema $ quote $ Fn Dynamic (-> AnyEnum) (:open :decode)
           :tests $ []
             %{} 'TestEntry (:name |dispatch-preserves-enum-payload)
               :code $ quote $ let
@@ -2462,8 +2462,10 @@
                   session/remove-message db
                     app.decode/read-message-id $ decode-map-as op-data $ Map Tag Dynamic
                     , sid
-                (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
-                (:user/sign-up op-data) (user/sign-up db op-data sid op-id op-time)
+                (:user/log-in op-data)
+                  user/log-in db (user/read-login-credentials op-data) sid op-id op-time
+                (:user/sign-up op-data)
+                  user/sign-up db (user/read-login-credentials op-data) sid op-id op-time
                 (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
                 (:session/view-article op-data)
                   session/view-article db (decode-map-as op-data 'String) sid
@@ -2483,6 +2485,7 @@
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) AnyEnum Number String Number
             -> $ Map Tag Dynamic
+            :open :decode
           :tests $ []
             %{} 'TestEntry
               :name |session-operation-preserves-root-and-numeric-key
@@ -2951,10 +2954,9 @@
           :examples $ []
           :schema $ quote StructDef
         'log-in $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn log-in (db op-data sid op-id op-time)
+          :code $ quote $ defn log-in (db credentials sid op-id op-time)
             let
                 db-map $ decode-map-as db $ Map Tag Dynamic
-                credentials $ read-login-credentials op-data
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
@@ -2988,7 +2990,7 @@
                           , op-id $ {} (:id op-id)
                             :text $ str "|No user named: " username
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic app.updater.user/LoginCredentials Number String Number (-> Dynamic)
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :user-id) nil
@@ -3034,10 +3036,9 @@
                 assert= true $ rejected? nil
               :tags $ #{} :input-boundary :unit
         'sign-up $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn sign-up (db op-data sid op-id op-time)
+          :code $ quote $ defn sign-up (db credentials sid op-id op-time)
             let
                 db-map $ decode-map-as db $ Map Tag Dynamic
-                credentials $ read-login-credentials op-data
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
@@ -3063,7 +3064,7 @@
                       :password $ md5 password
                       :avatar nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic app.updater.user/LoginCredentials Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
           :require
@@ -3087,6 +3088,7 @@
           :schema $ quote $ Fn
             Fn *dispatch-op $ -> Unit
             -> $ Fn AnyEnum $ -> Unit
+            :open :decode
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
             set-timeout!
