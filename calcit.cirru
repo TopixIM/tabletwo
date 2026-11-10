@@ -113,11 +113,20 @@
           :examples $ []
           :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi)
         'payload-to-wire $ %{} 'CodeEntry
-          :doc "|Encode the existing :data field, keeping a notification ID in its legacy Map and empty payloads as nil."
+          :doc "|Encode the existing :data field, keeping edit payloads and notification IDs as legacy Maps, and empty payloads as nil."
           :code $ quote $ defn payload-to-wire (action)
             match action
               (:session/remove-message id)
                 {} $ :id id
+              (:article/title edit)
+                {}
+                  :id $ :id edit
+                  :title $ :title edit
+              (:paragraph/content edit)
+                {}
+                  :id $ :id edit
+                  :time $ :time edit
+                  :text $ :text edit
               _ $ app.decode/optional-wire $ first (&enum:params action)
           :examples $ []
           :schema $ quote $ Fn app.schema/Op (-> Dynamic)
@@ -128,6 +137,12 @@
               assert=
                 {} $ :id |m-1
                 payload-to-wire $ app.schema/Op :session/remove-message |m-1
+              assert=
+                {} (:id |a-1) (:title "|标题🐈")
+                payload-to-wire $ app.schema/Op :article/title $ app.schema/ArticleTitle :id |a-1 :title "|标题🐈"
+              assert=
+                {} (:id |p-1) (:time 42) (:text "|正文🌱")
+                payload-to-wire $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id |p-1 :time 42 :text "|正文🌱"
             :tags $ #{} :operation :unit
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
@@ -235,7 +250,7 @@
                                 title $ decode-map-as result String
                               when
                                 not $ blank? title
-                                d! $ app.schema/Op :article/title $ {} (:id article-id) (:title title)
+                                d! $ app.schema/Op :article/title $ app.schema/ArticleTitle :id article-id :title title
                             , &unit
                         , &unit
                     space-x 16
@@ -250,7 +265,7 @@
                         .show remove-plugin (alert-dispatch d!)
                           fn ()
                             hint-fn $ Fn $ -> Unit
-                            d! $ :: :article/remove-one article-id
+                            d! $ app.schema/Op :article/remove-one article-id
                             , &unit
                         , &unit
                 div
@@ -319,7 +334,7 @@
                                 title $ decode-map-as result String
                               when
                                 not $ blank? title
-                                d! $ :: :article/create title
+                                d! $ app.schema/Op :article/create title
                             , &unit
                         , &unit
                     <> "|Create Article"
@@ -747,7 +762,7 @@
                                 value $ decode-map-as (:value e) 'String
                                 state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
                               d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
-                              d! $ app.schema/Op :paragraph/content $ {} (:id sort-id) (:time timestamp) (:text value)
+                              d! $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id sort-id :time timestamp :text value
                               , &unit
                           , :on-keydown $ fn (e d!)
                             hint-fn $ Fn respo.schema/RespoEvent
@@ -1828,6 +1843,10 @@
         :code $ quote $ ns app.ffi.url
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'ArticleTitle $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct ArticleTitle (:id String) (:title String)
+          :examples $ []
+          :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
             :states (List respo.schema/CoordKey) Dynamic
@@ -1842,19 +1861,20 @@
             :router/change $ Map Tag Tag
             :paragraph/prepend
             :paragraph/append-to String
-            :paragraph/content $ Map Tag app.schema/ParagraphEditField
+            :paragraph/content app.schema/ParagraphContent
             :paragraph/remove String
             :paragraph/move $ Map Tag String
             :paragraph/edit String
             :paragraph/finish-editing String
             :article/create String
             :article/remove-one String
-            :article/title $ Map Tag String
+            :article/title app.schema/ArticleTitle
           :examples $ []
           :schema $ quote EnumDef
-        'ParagraphEditField $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defunion ParagraphEditField String Number
+        'ParagraphContent $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct ParagraphContent (:id String) (:time Number) (:text String)
           :examples $ []
+          :schema $ quote StructDef
         'article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def article
             {} (:id nil)
