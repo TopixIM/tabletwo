@@ -433,13 +433,14 @@
                         match route-name
                           (:some name)
                             match name
-                              :profile $ comp-profile (required-field store-map :user)
-                                decode-map-as route-data $ Map Number Dynamic
+                              :profile $ comp-profile (required-field store-map :user) (app.decode/read-member-names route-data)
                               :home $ comp-articles (>> states :articles)
                                 decode-map-as route-data $ Map Tag Dynamic
                               :article $ div
                                 {} $ :style $ merge ui/row ui/flex
-                                comp-previewer (>> states :previewer) (required-field article-data :article) (required-field article-data :focuses) (required-field article-data :members) paragraph-id
+                                comp-previewer (>> states :previewer) (required-field article-data :article) (required-field article-data :focuses)
+                                  app.decode/read-member-names $ required-field article-data :members
+                                  , paragraph-id
                               _ $ render-unknown-route router
                           (:none) (render-unknown-route router)
                         comp-login $ >> states :login
@@ -1335,7 +1336,6 @@
                 article-title $ read-article-title article
                 focuses-map $ decode-map-as focuses $ Map String
                   List $ Map Tag Dynamic
-                members-map $ decode-map-as members $ Map Number Dynamic
                 paragraphs-map $ decode-map-as (required-field article-map :paragraphs)
                   Map String $ Map Tag Dynamic
               div
@@ -1354,14 +1354,16 @@
                       list->
                         {} $ :style $ merge ui/row
                           {} $ :display :inline-block
-                        -> members-map (.to-list)
-                          .map-pair $ fn (k username)
-                            [] k $ span
-                              {} $ :style $ {} (:margin-right 8)
-                                :color $ hsl 0 0 70
-                              if (nil? username)
-                                span $ {}
-                                <> $ decode-map-as username 'String
+                        -> (map-entries members)
+                          .map $ fn (entry)
+                            [] (:key entry)
+                              span
+                                {} $ :style $ {} (:margin-right 8)
+                                  :color $ hsl 0 0 70
+                                match (:value entry)
+                                  (:none)
+                                    span $ {}
+                                  (:some name) (<> name)
                     div
                       {} $ :style ui/row
                       comp-text-viewer article
@@ -1388,7 +1390,11 @@
                             option-is? sort-id k
                 space-y 300
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic (Option String) (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic
+            Map Number $ Option String
+            Option String
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-text-viewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-text-viewer (article)
             let
@@ -1489,12 +1495,11 @@
             app.comp.articles :refer $ read-article-title read-focus-name
             app.comp.editor-toolbar :refer $ ToolbarDragProps
     'app.comp.profile $ %{} 'FileEntry
-      :defs $ {}
-        'comp-profile $ %{} 'CodeEntry (:doc |)
+      :defs $ {} $ 'comp-profile
+        %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-profile (user members)
             let
                 user-map $ decode-map-as user $ Map Tag Dynamic
-                members-map $ read-profile-members members
               div
                 {} $ :style $ merge ui/flex
                   {} $ :padding 16
@@ -1508,16 +1513,18 @@
                   space-x 8
                   list->
                     {} $ :style ui/row
-                    -> members-map (.to-list)
-                      .map-pair $ fn (k username)
-                        [] k $ div
-                          {} $ :style $ {} (:padding "|0 8px")
-                            :border $ str "|1px solid " $ hsl 0 0 80
-                            :border-radius |16px
-                            :margin "|0 4px"
-                          if (nil? username)
-                            span $ {}
-                            <> $ decode-map-as username 'String
+                    -> (map-entries members)
+                      .map $ fn (entry)
+                        [] (:key entry)
+                          div
+                            {} $ :style $ {} (:padding "|0 8px")
+                              :border $ str "|1px solid " $ hsl 0 0 80
+                              :border-radius |16px
+                              :margin "|0 4px"
+                            match (:value entry)
+                              (:none)
+                                span $ {}
+                              (:some name) (<> name)
                 space-y 48
                 div ({})
                   button
@@ -1535,30 +1542,10 @@
                         storage-remove! $ :storage-key config/site
                     <> "|Log out"
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
-        'read-profile-members $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn read-profile-members (value)
-            decode-map-as value $ Map Number Dynamic
-          :examples $ []
           :schema $ quote $ Fn Dynamic
-            -> $ Map Number Dynamic
-          :tests $ []
-            %{} 'TestEntry
-              :name |numeric-session-keys-preserve-string-and-absent-names
-              :code $ quote $ let
-                  value $ {} (7 "|成员🌱") (0 nil)
-                assert= value $ read-profile-members value
-              :tags $ #{} :projection :unit
-            %{} 'TestEntry (:name |rejects-string-session-key-without-coercion)
-              :code $ quote $ assert= true
-                try
-                  do
-                    read-profile-members $ {} $ |7 "|成员"
-                    , false
-                  fn (message)
-                    hint-fn $ Fn String $ -> Bool
-                    , true
-              :tags $ #{} :projection :unit
+            Map Number $ Option String
+            -> respo.schema/Component
+            :features :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.profile
           :require
@@ -1710,6 +1697,39 @@
               assert= false $ present? $ Option :some nil
               assert= false $ present? $ Option :none
             :tags $ #{} :decode :unit
+        'read-member-names $ %{} 'CodeEntry
+          :doc "|Decode names on the existing wire into optional strings without changing session keys."
+          :code $ quote $ defn read-member-names (value)
+            filter-map-kv
+              decode-map-as value $ Map Number Dynamic
+              fn (session-id raw)
+                MapEntryDecision :keep session-id $ if (nil? raw) (Option :none)
+                  Option :some $ decode-map-as raw String
+          :examples $ []
+          :schema $ quote $ Fn Dynamic
+            -> $ Map Number $ Option String
+          :tests $ []
+            %{} 'TestEntry
+              :name |numeric-session-keys-preserve-string-and-absent-names
+              :code $ quote $ let
+                  value $ {} (7 "|成员🌱") (0 nil) (8 |)
+                assert=
+                  {}
+                    7 $ Option :some "|成员🌱"
+                    0 $ Option :none
+                    8 $ Option :some |
+                  read-member-names value
+              :tags $ #{} :projection :unit
+            %{} 'TestEntry (:name |rejects-string-session-key-without-coercion)
+              :code $ quote $ assert= true
+                try
+                  do
+                    read-member-names $ {} $ |7 "|成员"
+                    , false
+                  fn (message)
+                    hint-fn $ Fn String $ -> Bool
+                    , true
+              :tags $ #{} :projection :unit
         'read-message-id $ %{} 'CodeEntry
           :doc "|Read the String ID from a legacy notification payload, allowing extra metadata."
           :code $ quote $ defn read-message-id (payload)
@@ -2402,12 +2422,13 @@
                         and (field-is? router :name :article)
                           = article-id $ optional-field session-map :article-id
                     Map Number $ Map Tag Dynamic
-                -> filtered $ .map-kv $ fn (k session)
+                filter-map-kv filtered $ fn (k session)
                   let
                       session-map $ decode-map-as session $ Map Tag Dynamic
-                    [] k $ user-name-to-wire $ read-session-user-name users-map session-map
+                    MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn (Option Dynamic) Dynamic Dynamic (-> Dynamic)
+          :schema $ quote $ Fn (Option Dynamic) Dynamic Dynamic
+            -> $ Map Number $ JsNullish String
         'twig-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-profile (sessions users)
             let
@@ -2424,7 +2445,8 @@
                     session-map $ decode-map-as session $ Map Tag Dynamic
                   MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> Dynamic)
+          :schema $ quote $ Fn Dynamic Dynamic
+            -> $ Map Number $ JsNullish String
         'user-name-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder for member/profile maps: the client renders a nil name as an empty span."
           :code $ quote $ defn user-name-to-wire (user-name)
