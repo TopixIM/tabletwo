@@ -12,7 +12,7 @@
 `package.json` 中的 `@calcit/procs` 必须与它精确配对。
 模块使用 `deps.cirru` 中的正式 tag，npm 新包安装保留一小时隔离。
 
-CLI 与 `@calcit/procs` 配对使用 Calcit 0.40.0。升级后请重新安装依赖、构建并刷新页面。
+CLI 与 `@calcit/procs` 配对使用 Calcit 0.41.0。升级后请重新安装依赖、构建并刷新页面。
 客户端使用 RespoEvent 读取输入，状态游标使用 CoordKey union，文章、段落和登录操作保留各自载荷类型。
 客户端每次渲染仍将开放 store 解码为 StoreView，twig 和 updater 在读取处校验字段。
 前后端沿用原 Cirru EDN 消息和存储格式。无载荷操作在发送时仍编码为 `:data nil`，Number session key 保持原合同。
