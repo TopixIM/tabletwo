@@ -705,7 +705,7 @@
       :defs $ {}
         'EditorInputProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct EditorInputProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :class-name String
             :placeholder String
             :value String
@@ -744,30 +744,26 @@
                         {} (:max-width 960) (:width |100%) (:margin :auto)
                       comp-editor-toolbar states sort-id
                       space-y 8
-                      textarea $ EditorInputProps :style
-                        merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
-                          :border $ str "|1px solid " $ hsl 240 80 90
-                          :background-color $ hsl 0 0 100
-                        , :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
-                          fn (e d!)
-                            hint-fn $ Fn respo.schema/RespoEvent
-                              Fn *dispatch-op $ -> Unit
-                              -> Unit
-                            let
-                                timestamp $ decode-map-as (js/Date.now) 'Number
-                                value $ decode-map-as (:value e) 'String
-                                state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
-                              d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
-                              d! $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id sort-id :time timestamp :text value
-                              , &unit
-                          , :on-keydown $ fn (e d!)
-                            hint-fn $ Fn respo.schema/RespoEvent
-                              Fn *dispatch-op $ -> Unit
-                              -> Unit
-                            when
-                              = (:keycode e) 27
-                              d! $ :: :paragraph/finish-editing sort-id
+                      textarea $ EditorInputProps :style style-editor-input :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
+                        fn (e d!)
+                          hint-fn $ Fn respo.schema/RespoEvent
+                            Fn *dispatch-op $ -> Unit
+                            -> Unit
+                          let
+                              timestamp $ decode-map-as (js/Date.now) 'Number
+                              value $ decode-map-as (:value e) 'String
+                              state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
+                            d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
+                            d! $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id sort-id :time timestamp :text value
                             , &unit
+                        , :on-keydown $ fn (e d!)
+                          hint-fn $ Fn respo.schema/RespoEvent
+                            Fn *dispatch-op $ -> Unit
+                            -> Unit
+                          when
+                            = (:keycode e) 27
+                            d! $ :: :paragraph/finish-editing sort-id
+                          , &unit
                   (:none) None
                 match editing-id
                   (:some _editing)
@@ -825,6 +821,15 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :editor-text :unit
+        'style-editor-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/textarea ui/flex
+            decode-map-as
+              {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
+                :border $ str "|1px solid " $ hsl 240 80 90
+                :background-color $ hsl 0 0 100
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.editor-panel
           :require
@@ -843,13 +848,13 @@
       :defs $ {}
         'ToolbarCloseProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarCloseProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-click respo.schema/EventHandler
           :examples $ []
           :schema $ quote StructDef
         'ToolbarDragProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarDragProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :draggable Bool
             :on-dragstart respo.schema/EventHandler
           :examples $ []
@@ -857,17 +862,15 @@
         'comp-editor-toolbar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-editor-toolbar (states sort-id)
             div
-              ToolbarDragProps :style
-                merge ui/row $ {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
-                , :draggable true :on-dragstart $ fn (e d!)
-                  hint-fn $ Fn respo.schema/RespoEvent
-                    Fn *dispatch-op $ -> Unit
-                    -> Unit
-                  let
-                      event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                      data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
-                    .set-data! data-transfer |text $ str sort-id
-                  , &unit
+              ToolbarDragProps :style style-editor-toolbar :draggable true :on-dragstart $ fn (e d!)
+                hint-fn $ Fn respo.schema/RespoEvent
+                  Fn *dispatch-op $ -> Unit
+                  -> Unit
+                let
+                    event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                    data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                  .set-data! data-transfer |text $ str sort-id
+                , &unit
               span
                 ToolbarCloseProps :style
                   {} $ :cursor :pointer
@@ -928,6 +931,13 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :toolbar-close :unit
+        'style-editor-toolbar $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/row
+            decode-map-as
+              {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.editor-toolbar
           :require
@@ -1108,7 +1118,7 @@
       :defs $ {}
         'NavigationProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct NavigationProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-click respo.schema/EventHandler
           :examples $ []
           :schema $ quote StructDef
@@ -1160,9 +1170,11 @@
             :tags $ #{} :navigation-view :unit
         'style-entry $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-entry
-            {} (:cursor :pointer) (:padding "|8px 0")
+            decode-map-as
+              {} (:cursor :pointer) (:padding "|8px 0")
+              Map Tag respo-ui.schema/StyleValue
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.navigation
           :require
@@ -1173,7 +1185,7 @@
       :defs $ {}
         'ParagraphDropProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ParagraphDropProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-drop respo.schema/EventHandler
             :on-dragover respo.schema/EventHandler
             :on-dragenter respo.schema/EventHandler
@@ -1252,40 +1264,37 @@
                 paragraph-map $ decode-map-as paragraph $ Map Tag Dynamic
                 paragraph-text $ read-paragraph-content paragraph
               div
-                ParagraphDropProps :style
-                  merge ui/column $ {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
-                    :border $ str "|1px solid " $ hsl 0 0 90
-                  , :on-drop
+                ParagraphDropProps :style style-paragraph-drop :on-drop
+                  fn (e d!)
+                    hint-fn $ Fn respo.schema/RespoEvent
+                      Fn *dispatch-op $ -> Unit
+                      -> Unit
+                    let
+                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                        data $ data-transfer .get-data |text
+                      event .stop-propagation!
+                      if (not= sort-id data)
+                        d! $ app.schema/Op :paragraph/move $ {} (:target data)
+                          :base $ decode-map-as sort-id String
+                    , &unit
+                  , :on-dragover
                     fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
                         Fn *dispatch-op $ -> Unit
                         -> Unit
                       let
                           event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
-                          data $ data-transfer .get-data |text
-                        event .stop-propagation!
-                        if (not= sort-id data)
-                          d! $ app.schema/Op :paragraph/move $ {} (:target data)
-                            :base $ decode-map-as sort-id String
+                        event .prevent-default!
                       , &unit
-                    , :on-dragover
-                      fn (e d!)
-                        hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
-                          -> Unit
-                        let
-                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          event .prevent-default!
-                        , &unit
-                      , :on-dragenter $ fn (e d!)
-                        hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
-                          -> Unit
-                        let
-                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          event .prevent-default!
-                        , &unit
+                    , :on-dragenter $ fn (e d!)
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn *dispatch-op $ -> Unit
+                        -> Unit
+                      let
+                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        event .prevent-default!
+                      , &unit
                 comp-md-block paragraph-text $ {} (:class-name |preview-content)
                   :style $ {} $ :padding "|0 16px"
                   :highlight $ fn (code lang)
@@ -1301,17 +1310,15 @@
                         escape-html code
                       , 'String
                 div
-                  ToolbarDragProps :style
-                    merge ui/row-parted $ {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
-                    , :draggable true :on-dragstart $ fn (e d!)
-                      hint-fn $ Fn respo.schema/RespoEvent
-                        Fn *dispatch-op $ -> Unit
-                        -> Unit
-                      let
-                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
-                        data-transfer .set-data! |text $ str sort-id
-                      , &unit
+                  ToolbarDragProps :style style-paragraph-toolbar :draggable true :on-dragstart $ fn (e d!)
+                    hint-fn $ Fn respo.schema/RespoEvent
+                      Fn *dispatch-op $ -> Unit
+                      -> Unit
+                    let
+                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                      data-transfer .set-data! |text $ str sort-id
+                    , &unit
                   comp-info-list focus-list
                   div
                     {} $ :style ui/row
@@ -1478,6 +1485,21 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :text-boundary :unit
+        'style-paragraph-drop $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/column
+            decode-map-as
+              {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
+                :border $ str "|1px solid " $ hsl 0 0 90
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
+        'style-paragraph-toolbar $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/row-parted
+            decode-map-as
+              {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
         'supprted-langs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def supprted-langs
             {} (|clojure |clojure) (|javascript |javascript) (|js |javascript) (|bash |bash)
