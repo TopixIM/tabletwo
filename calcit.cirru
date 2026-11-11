@@ -1769,7 +1769,7 @@
           :code $ quote $ defn read-message-id (payload)
             decode-map-as (required-field payload :id) 'String
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> String)
+          :schema $ quote $ Fn (Map Tag V) (-> String) (:generics V)
         'required-field $ %{} 'CodeEntry
           :doc "|Read a field the producer always sends. A missing key raises with the field name; a present value, even nil, is returned for the caller to decode."
           :code $ quote $ defn required-field (m k)
