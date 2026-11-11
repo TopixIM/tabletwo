@@ -21,7 +21,7 @@
           :examples $ []
           :schema $ quote $ Ref (Map Tag Dynamic)
         '*store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defref *store (Option :none)
+          :code $ quote $ defref *store None
           :examples $ []
           :schema $ quote $ Ref
             Option $ Map Tag Dynamic
@@ -40,9 +40,7 @@
               ws-connect! (str |ws:// host |: port)
                 {}
                   :on-open $ fn (event) (simulate-login!)
-                  :on-close $ fn (event)
-                    reset! *store $ Option :none
-                    js/console.error |Disconnected
+                  :on-close $ fn (event) (reset! *store None) (js/console.error |Disconnected)
                   :on-data on-server-data
           :examples $ []
           :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :js-ffi)
@@ -60,7 +58,7 @@
                 :data $ payload-to-wire action
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             let
@@ -90,7 +88,7 @@
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
-            option:unwrap $ query-selector |.app
+            (query-selector |.app) .unwrap
           :examples $ []
           :schema $ quote respo.dom/DomElement
         'on-server-data $ %{} 'CodeEntry (:doc |)
@@ -107,7 +105,7 @@
                         (:none) nil
                       next-value $ patch-twig base $ schema/read-patch-changes changes
                       next-store $ decode-map-as next-value $ Map Tag Dynamic
-                    reset! *store $ Option :some next-store
+                    reset! *store $ Some next-store
                 js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
@@ -129,7 +127,7 @@
                   :text $ :text edit
               _ $ app.decode/optional-wire $ first (&enum:params action)
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Dynamic)
+          :schema $ quote $ Fn schema/Op (-> Dynamic)
           :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
             :code $ quote $ do
               assert= |a $ payload-to-wire $ app.schema/Op :paragraph/append-to |a
@@ -244,7 +242,7 @@
                           -> Unit
                         .show edit-plugin (alert-dispatch d!)
                           fn (result)
-                            hint-fn $ Fn Dynamic $ -> Unit
+                            hint-fn $ Fn String $ -> Unit
                             println "|as result:" result
                             let
                                 title $ decode-map-as result String
@@ -275,7 +273,7 @@
                     {} $ :style ui/row
                     ->
                       assert-type
-                        option:unwrap-or (get focuses-map article-id) ([])
+                        .unwrap-or (get focuses-map article-id) ([])
                         List Dynamic
                       .to-list
                       .map $ fn (info)
@@ -329,7 +327,7 @@
                           -> Unit
                         .show create-plugin (alert-dispatch d!)
                           fn (result)
-                            hint-fn $ Fn Dynamic $ -> Unit
+                            hint-fn $ Fn String $ -> Unit
                             let
                                 title $ decode-map-as result String
                               when
@@ -377,18 +375,16 @@
                 info-map $ decode-map-as info $ Map Tag Dynamic
               match (optional-field info-map :name)
                 (:some raw-name)
-                  Option :some $ decode-map-as raw-name 'String
-                (:none) (Option :none)
+                  Some $ decode-map-as raw-name 'String
+                (:none) None
           :examples $ []
           :schema $ quote $ Fn Dynamic
             -> $ Option String
           :tests $ [] $ %{} 'TestEntry (:name |missing-name-remains-absent)
             :code $ quote $ do
-              assert= (Option :none)
-                read-focus-name $ {}
-              assert= (Option :none)
-                read-focus-name $ {} $ :name nil
-              assert= (Option :some |)
+              assert= None $ read-focus-name $ {}
+              assert= None $ read-focus-name $ {} (:name nil)
+              assert= (Some |)
                 read-focus-name $ {} $ :name |
             :tags $ #{} :text-boundary :unit
       :ns $ %{} 'NsEntry (:doc |)
@@ -438,7 +434,7 @@
                     article-data $ if article?
                       decode-map-as route-data $ Map Tag Dynamic
                       {}
-                    editing-id $ if (and logged-in? article?) paragraph-id $ Option :none
+                    editing-id $ if (and logged-in? article?) paragraph-id None
                   div
                     {} $ :style $ merge ui/global ui/fullscreen ui/column
                     div
@@ -470,12 +466,12 @@
                         d! $ app.schema/Op :session/remove-message $ app.decode/read-message-id info
                     comp-status-color $ :color view
                     if dev?
-                      Option :some $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
-                      Option :none
+                      Some $ comp-inspect |Store store-map $ {} (:bottom 0) (:right 0) (:max-width |100%)
+                      , None
                     if dev?
-                      Option :some $ comp-reel (read-reel-length store-map)
+                      Some $ comp-reel (read-reel-length store-map)
                         {} (:right 0) (:bottom 40)
-                      Option :none
+                      , None
           :examples $ []
           :schema $ quote $ Fn Dynamic
             Option $ Map Tag Dynamic
@@ -511,29 +507,29 @@
                 decode-map-as (required-field store-map :logged-in?) 'Bool
                 , :count $ match (optional-field store-map :count)
                   (:some raw-count)
-                    Option :some $ decode-map-as raw-count 'Number
-                  (:none) (Option :none)
+                    Some $ decode-map-as raw-count 'Number
+                  (:none) None
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.comp.container/NavigationView)
+          :schema $ quote $ Fn Dynamic (-> NavigationView)
           :tests $ []
             %{} 'TestEntry (:name |guest-count-is-absent-not-zero)
               :code $ quote $ let
                   view $ read-navigation-view $ {} (:logged-in? false)
                 assert= false $ :logged-in? view
-                assert= (Option :none) (:count view)
+                assert= None $ :count view
               :tags $ #{} :navigation-view :unit
             %{} 'TestEntry (:name |present-zero-count)
               :code $ quote $ let
                   view $ read-navigation-view $ {} (:logged-in? true) (:count 0)
                 assert= true $ :logged-in? view
-                assert= (Option :some 0) (:count view)
+                assert= (Some 0) (:count view)
               :tags $ #{} :navigation-view :unit
             %{} 'TestEntry (:name |navigation-view-keeps-source-extra-fields)
               :code $ quote $ let
                   store $ {} (:logged-in? false) (:count 2) (:payload |preserved)
                   view $ read-navigation-view store
                 assert= false $ :logged-in? view
-                assert= (Option :some 2) (:count view)
+                assert= (Some 2) (:count view)
                 assert= |preserved $ match (get store :payload)
                   (:some lookup-value) lookup-value
                   (:none) nil
@@ -565,7 +561,7 @@
             %{} 'TestEntry (:name |explicit-nil-count-is-absent)
               :code $ quote $ let
                   view $ read-navigation-view $ {} (:logged-in? false) (:count nil)
-                assert= (Option :none) (:count view)
+                assert= None $ :count view
               :tags $ #{} :navigation-view :unit
         'read-reel-length $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-reel-length (store)
@@ -609,24 +605,24 @@
                   {}
                 route-name $ match (optional-field router :name)
                   (:some raw-name)
-                    Option :some $ decode-map-as raw-name 'Tag
-                  (:none) (Option :none)
+                    Some $ decode-map-as raw-name 'Tag
+                  (:none) None
                 paragraph-id $ match (optional-field session :paragraph-id)
                   (:some raw-id)
-                    Option :some $ decode-map-as raw-id 'String
-                  (:none) (Option :none)
+                    Some $ decode-map-as raw-id 'String
+                  (:none) None
                 color $ match (optional-field store-map :color)
                   (:some raw-color)
-                    Option :some $ decode-map-as raw-color 'String
-                  (:none) (Option :none)
+                    Some $ decode-map-as raw-color 'String
+                  (:none) None
                 messages $ decode-map-as
-                  option:unwrap-or (get session :messages) ({})
+                  .unwrap-or (get session :messages) ({})
                   Map String Dynamic
               StoreView :navigation navigation :router router :route-name route-name :route-data
                 field-or router :data $ {}
                 , :paragraph-id paragraph-id :color color :messages messages
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.comp.container/StoreView)
+          :schema $ quote $ Fn Dynamic (-> StoreView)
           :tests $ []
             %{} 'TestEntry (:name |guest-store-has-empty-router)
               :code $ quote $ let
@@ -634,10 +630,10 @@
                     :session $ {} $ :paragraph-id nil
                 assert= false $ :logged-in? $ :navigation view
                 assert= ({}) (:router view)
-                assert= (Option :none) (:route-name view)
+                assert= None $ :route-name view
                 assert= ({}) (:route-data view)
-                assert= (Option :none) (:paragraph-id view)
-                assert= (Option :none) (:color view)
+                assert= None $ :paragraph-id view
+                assert= None $ :color view
                 assert= ({}) (:messages view)
               :tags $ #{} :navigation-view :unit
             %{} 'TestEntry (:name |logged-in-store-decodes-route-and-editing-state)
@@ -648,14 +644,14 @@
                         {} $ :text |hi
                     :router $ {} (:name :article)
                       :data $ {} $ :paragraph-id |T
-                assert= (Option :some 2)
+                assert= (Some 2)
                   :count $ :navigation view
-                assert= (Option :some :article) (:route-name view)
+                assert= (Some :article) (:route-name view)
                 assert=
                   {} $ :paragraph-id |T
                   :route-data view
-                assert= (Option :some |T) (:paragraph-id view)
-                assert= (Option :some |#abc) (:color view)
+                assert= (Some |T) (:paragraph-id view)
+                assert= (Some |#abc) (:color view)
                 assert= 1 $ count $ :messages view
               :tags $ #{} :navigation-view :unit
             %{} 'TestEntry (:name |rejects-missing-session-and-logged-in-router)
@@ -709,7 +705,7 @@
       :defs $ {}
         'EditorInputProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct EditorInputProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :class-name String
             :placeholder String
             :value String
@@ -743,39 +739,35 @@
                     :padding-left $ if visible? 88 0
                 match editing-id
                   (:some _editing)
-                    Option :some $ div
+                    Some $ div
                       {} $ :style $ merge ui/flex ui/column
                         {} (:max-width 960) (:width |100%) (:margin :auto)
                       comp-editor-toolbar states sort-id
                       space-y 8
-                      textarea $ EditorInputProps :style
-                        merge ui/textarea ui/flex $ {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
-                          :border $ str "|1px solid " $ hsl 240 80 90
-                          :background-color $ hsl 0 0 100
-                        , :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
-                          fn (e d!)
-                            hint-fn $ Fn respo.schema/RespoEvent
-                              Fn *dispatch-op $ -> Unit
-                              -> Unit
-                            let
-                                timestamp $ decode-map-as (js/Date.now) 'Number
-                                value $ decode-map-as (:value e) 'String
-                                state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
-                              d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
-                              d! $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id sort-id :time timestamp :text value
-                              , &unit
-                          , :on-keydown $ fn (e d!)
-                            hint-fn $ Fn respo.schema/RespoEvent
-                              Fn *dispatch-op $ -> Unit
-                              -> Unit
-                            when
-                              = (:keycode e) 27
-                              d! $ :: :paragraph/finish-editing sort-id
+                      textarea $ EditorInputProps :style style-editor-input :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
+                        fn (e d!)
+                          hint-fn $ Fn respo.schema/RespoEvent
+                            Fn *dispatch-op $ -> Unit
+                            -> Unit
+                          let
+                              timestamp $ decode-map-as (js/Date.now) 'Number
+                              value $ decode-map-as (:value e) 'String
+                              state-cursor $ decode-map-as cursor $ List respo.schema/CoordKey
+                            d! $ :: :states state-cursor $ {} (:time timestamp) (:text value)
+                            d! $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id sort-id :time timestamp :text value
                             , &unit
-                  (:none) (Option :none)
+                        , :on-keydown $ fn (e d!)
+                          hint-fn $ Fn respo.schema/RespoEvent
+                            Fn *dispatch-op $ -> Unit
+                            -> Unit
+                          when
+                            = (:keycode e) 27
+                            d! $ :: :paragraph/finish-editing sort-id
+                          , &unit
+                  (:none) None
                 match editing-id
                   (:some _editing)
-                    Option :some $ comp-icon :trash
+                    Some $ comp-icon :trash
                       {} (:font-size 14) (:cursor :pointer)
                         :color $ hsl 200 80 70
                       fn (e d!)
@@ -788,7 +780,7 @@
                             d! $ :: :paragraph/remove sort-id
                             , &unit
                         , &unit
-                  (:none) (Option :none)
+                  (:none) None
                 .render remove-plugin
           :examples $ []
           :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :js-ffi)
@@ -829,6 +821,15 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :editor-text :unit
+        'style-editor-input $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/textarea ui/flex
+            decode-map-as
+              {} (:width |100%) (:min-height |20vh) (:resize :vertical) (:padding 16) (:font-family ui/font-code) (:font-size 13) (:border-radius |4px) (:line-height |1.6em) (:padding-bottom 120)
+                :border $ str "|1px solid " $ hsl 240 80 90
+                :background-color $ hsl 0 0 100
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.editor-panel
           :require
@@ -847,13 +848,13 @@
       :defs $ {}
         'ToolbarCloseProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarCloseProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-click respo.schema/EventHandler
           :examples $ []
           :schema $ quote StructDef
         'ToolbarDragProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ToolbarDragProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :draggable Bool
             :on-dragstart respo.schema/EventHandler
           :examples $ []
@@ -861,17 +862,15 @@
         'comp-editor-toolbar $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-editor-toolbar (states sort-id)
             div
-              ToolbarDragProps :style
-                merge ui/row $ {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
-                , :draggable true :on-dragstart $ fn (e d!)
-                  hint-fn $ Fn respo.schema/RespoEvent
-                    Fn *dispatch-op $ -> Unit
-                    -> Unit
-                  let
-                      event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                      data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
-                    .set-data! data-transfer |text $ str sort-id
-                  , &unit
+              ToolbarDragProps :style style-editor-toolbar :draggable true :on-dragstart $ fn (e d!)
+                hint-fn $ Fn respo.schema/RespoEvent
+                  Fn *dispatch-op $ -> Unit
+                  -> Unit
+                let
+                    event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                    data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                  .set-data! data-transfer |text $ str sort-id
+                , &unit
               span
                 ToolbarCloseProps :style
                   {} $ :cursor :pointer
@@ -932,6 +931,13 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :toolbar-close :unit
+        'style-editor-toolbar $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/row
+            decode-map-as
+              {} (:font-size 16) (:justify-content :flex-end) (:cursor :move) (:padding "|0 8px")
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.editor-toolbar
           :require
@@ -1063,7 +1069,7 @@
                 decode-map-as (required-field state-map :username) 'String
                 , :password $ decode-map-as (required-field state-map :password) 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.comp.login/LoginFields)
+          :schema $ quote $ Fn Dynamic (-> LoginFields)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-fields-preserve-extras)
               :code $ quote $ let
@@ -1112,7 +1118,7 @@
       :defs $ {}
         'NavigationProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct NavigationProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-click respo.schema/EventHandler
           :examples $ []
           :schema $ quote StructDef
@@ -1158,16 +1164,17 @@
           :schema $ quote $ Fn (Option Number) (-> String)
           :tests $ [] $ %{} 'TestEntry (:name |missing-and-zero-count-display)
             :code $ quote $ do
-              assert= (str nil)
-                navigation-count-text $ Option :none
-              assert= |0 $ navigation-count-text $ Option :some 0
-              assert= |2 $ navigation-count-text $ Option :some 2
+              assert= (str nil) (navigation-count-text None)
+              assert= |0 $ navigation-count-text $ Some 0
+              assert= |2 $ navigation-count-text $ Some 2
             :tags $ #{} :navigation-view :unit
         'style-entry $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def style-entry
-            {} (:cursor :pointer) (:padding "|8px 0")
+            decode-map-as
+              {} (:cursor :pointer) (:padding "|8px 0")
+              Map Tag respo-ui.schema/StyleValue
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.navigation
           :require
@@ -1178,7 +1185,7 @@
       :defs $ {}
         'ParagraphDropProps $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ParagraphDropProps
-            :style $ Map Tag Dynamic
+            :style $ Map Tag respo-ui.schema/StyleValue
             :on-drop respo.schema/EventHandler
             :on-dragover respo.schema/EventHandler
             :on-dragenter respo.schema/EventHandler
@@ -1257,40 +1264,37 @@
                 paragraph-map $ decode-map-as paragraph $ Map Tag Dynamic
                 paragraph-text $ read-paragraph-content paragraph
               div
-                ParagraphDropProps :style
-                  merge ui/column $ {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
-                    :border $ str "|1px solid " $ hsl 0 0 90
-                  , :on-drop
+                ParagraphDropProps :style style-paragraph-drop :on-drop
+                  fn (e d!)
+                    hint-fn $ Fn respo.schema/RespoEvent
+                      Fn *dispatch-op $ -> Unit
+                      -> Unit
+                    let
+                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                        data $ data-transfer .get-data |text
+                      event .stop-propagation!
+                      if (not= sort-id data)
+                        d! $ app.schema/Op :paragraph/move $ {} (:target data)
+                          :base $ decode-map-as sort-id String
+                    , &unit
+                  , :on-dragover
                     fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
                         Fn *dispatch-op $ -> Unit
                         -> Unit
                       let
                           event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
-                          data $ data-transfer .get-data |text
-                        event .stop-propagation!
-                        if (not= sort-id data)
-                          d! $ app.schema/Op :paragraph/move $ {} (:target data)
-                            :base $ decode-map-as sort-id String
+                        event .prevent-default!
                       , &unit
-                    , :on-dragover
-                      fn (e d!)
-                        hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
-                          -> Unit
-                        let
-                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          event .prevent-default!
-                        , &unit
-                      , :on-dragenter $ fn (e d!)
-                        hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
-                          -> Unit
-                        let
-                            event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          event .prevent-default!
-                        , &unit
+                    , :on-dragenter $ fn (e d!)
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn *dispatch-op $ -> Unit
+                        -> Unit
+                      let
+                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        event .prevent-default!
+                      , &unit
                 comp-md-block paragraph-text $ {} (:class-name |preview-content)
                   :style $ {} $ :padding "|0 16px"
                   :highlight $ fn (code lang)
@@ -1300,23 +1304,21 @@
                         let
                             highlighter $ unsafe-coerce hljs 'app.ffi.highlight/HighlightHost
                             result $ highlighter .highlight
-                              option:unwrap-or (get supprted-langs lang) |
+                              .unwrap-or (get supprted-langs lang) |
                               , code
                           result :value
                         escape-html code
                       , 'String
                 div
-                  ToolbarDragProps :style
-                    merge ui/row-parted $ {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
-                    , :draggable true :on-dragstart $ fn (e d!)
-                      hint-fn $ Fn respo.schema/RespoEvent
-                        Fn *dispatch-op $ -> Unit
-                        -> Unit
-                      let
-                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                          data-transfer $ option:unwrap $ js-nullish->option (js-get event :data-transfer)
-                        data-transfer .set-data! |text $ str sort-id
-                      , &unit
+                  ToolbarDragProps :style style-paragraph-toolbar :draggable true :on-dragstart $ fn (e d!)
+                    hint-fn $ Fn respo.schema/RespoEvent
+                      Fn *dispatch-op $ -> Unit
+                      -> Unit
+                    let
+                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                      data-transfer .set-data! |text $ str sort-id
+                    , &unit
                   comp-info-list focus-list
                   div
                     {} $ :style ui/row
@@ -1401,7 +1403,7 @@
                             k $ :key entry
                             paragraph $ :value entry
                           [] k $ comp-paragraph (>> states k) k paragraph
-                            option:unwrap-or (get focuses-map k) ([])
+                            .unwrap-or (get focuses-map k) ([])
                             option-is? sort-id k
                 space-y 300
           :examples $ []
@@ -1419,7 +1421,7 @@
                   :style $ merge style/button $ {}
                   :on-click $ fn (e d!)
                     let
-                        child $ option:unwrap $ window-open |
+                        child $ .unwrap $ window-open |
                         content $ article-text article-map
                         html $ str |<pre> (escape-html content) |</pre>
                         document $ unsafe-coerce (child :document) 'app.ffi.popup/DocumentWriterHost
@@ -1483,6 +1485,21 @@
                     hint-fn $ Fn String $ -> Bool
                     , true
               :tags $ #{} :text-boundary :unit
+        'style-paragraph-drop $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/column
+            decode-map-as
+              {} (:background-color :white) (:border-radius |6px) (:margin-bottom 12)
+                :border $ str "|1px solid " $ hsl 0 0 90
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
+        'style-paragraph-toolbar $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ merge ui/row-parted
+            decode-map-as
+              {} (:padding "|4px 8px") (:cursor :move) (:min-height 40)
+              Map Tag respo-ui.schema/StyleValue
+          :examples $ []
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
         'supprted-langs $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def supprted-langs
             {} (|clojure |clojure) (|javascript |javascript) (|js |javascript) (|bash |bash)
@@ -1581,14 +1598,16 @@
           :schema $ quote StructDef
         'dev? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def dev?
-            = |dev $ option:unwrap-or (get-env |mode) |release
+            = |dev $
+              get-env |mode
+              , .unwrap-or |release
           :examples $ []
           :schema $ quote Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             SiteConfig :port 11003 :title |Table2 :icon |http://cdn.tiye.me/logo/topix.png :theme |#eeeeff :storage-key |table2 :storage-file |storage.cirru
           :examples $ []
-          :schema $ quote app.config/SiteConfig
+          :schema $ quote SiteConfig
           :tests $ [] $ %{} 'TestEntry (:name |preserves-original-site-values)
             :code $ quote $ do
               assert= 11003 $ :port site
@@ -1658,37 +1677,35 @@
           :schema $ quote $ Fn (Option T) T (-> Bool) (:generics T)
           :tests $ [] $ %{} 'TestEntry (:name |compares-payload)
             :code $ quote $ do
-              assert= true $ option-is? (Option :some 27) 27
-              assert= false $ option-is? (Option :some 13) 27
-              assert= false $ option-is? (Option :none) 27
+              assert= true $ option-is? (Some 27) 27
+              assert= false $ option-is? (Some 13) 27
+              assert= false $ option-is? None 27
             :tags $ #{} :decode :unit
         'optional-field $ %{} 'CodeEntry
           :doc "|Read a field whose absence matters. Untyped server maps encode absence either as a missing key or as an explicit nil value, so both become Option :none."
           :code $ quote $ defn optional-field (m k)
             match (get m k)
               (:some value)
-                if (nil? value) (Option :none) (Option :some value)
-              (:none) (Option :none)
+                if (nil? value) None $ Some value
+              (:none) None
           :examples $ []
           :schema $ quote $ Fn (Map K V) K
             -> $ Option V
             :generics K V
           :tests $ [] $ %{} 'TestEntry (:name |missing-and-nil-are-absent)
             :code $ quote $ do
-              assert= (Option :some 1)
+              assert= (Some 1)
                 optional-field
                   {} $ :a 1
                   , :a
-              assert= (Option :some false)
+              assert= (Some false)
                 optional-field
                   {} $ :a false
                   , :a
-              assert= (Option :none)
-                optional-field
-                  {} $ :a nil
-                  , :a
-              assert= (Option :none)
-                optional-field ({}) :a
+              assert= None $ optional-field
+                {} $ :a nil
+                , :a
+              assert= None $ optional-field ({}) :a
             :tags $ #{} :decode :unit
         'optional-wire $ %{} 'CodeEntry
           :doc "|Project absence to the legacy wire nil at serialization and patch boundaries."
@@ -1708,9 +1725,9 @@
           :schema $ quote $ Fn (Option T) (-> Bool) (:generics T)
           :tests $ [] $ %{} 'TestEntry (:name |nil-inside-some-is-not-present)
             :code $ quote $ do
-              assert= true $ present? $ Option :some |k
-              assert= false $ present? $ Option :some nil
-              assert= false $ present? $ Option :none
+              assert= true $ present? $ Some |k
+              assert= false $ present? $ Some nil
+              assert= false $ present? None
             :tags $ #{} :decode :unit
         'read-member-names $ %{} 'CodeEntry
           :doc "|Decode names on the existing wire into optional strings without changing session keys."
@@ -1718,8 +1735,7 @@
             filter-map-kv
               decode-map-as value $ Map Number Dynamic
               fn (session-id raw)
-                MapEntryDecision :keep session-id $ if (nil? raw) (Option :none)
-                  Option :some $ decode-map-as raw String
+                MapEntryDecision :keep session-id $ if (nil? raw) None $ Some (decode-map-as raw String)
           :examples $ []
           :schema $ quote $ Fn Dynamic
             -> $ Map Number $ Option String
@@ -1730,9 +1746,9 @@
                   value $ {} (7 "|成员🌱") (0 nil) (8 |)
                 assert=
                   {}
-                    7 $ Option :some "|成员🌱"
-                    0 $ Option :none
-                    8 $ Option :some |
+                    7 $ Some "|成员🌱"
+                    0 None
+                    8 $ Some |
                   read-member-names value
               :tags $ #{} :projection :unit
             %{} 'TestEntry (:name |rejects-string-session-key-without-coercion)
@@ -2009,13 +2025,13 @@
           :code $ quote $ defref *reader-reel @*reel
           :examples $ []
           :schema $ quote $ Ref
-            cumulo-reel.core/ReelState $ Map Tag Dynamic
+            ReelState $ Map Tag Dynamic
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel
             ReelState :base @*initial-db :db @*initial-db :records ([]) :merged? false
           :examples $ []
           :schema $ quote $ Ref
-            cumulo-reel.core/ReelState $ Map Tag Dynamic
+            ReelState $ Map Tag Dynamic
         'action-data-from-wire $ %{} 'CodeEntry
           :doc "|Wire decoder for the op payload sent by app.client/payload-to-wire. Updaters take nil op-data for payload-less ops such as :user/log-out, so a missing :data key decodes to nil as well."
           :code $ quote $ defn action-data-from-wire (action)
@@ -2150,7 +2166,7 @@
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
           :examples $ []
-          :schema $ quote $ Fn Number (-> calcit.core/FfiTask)
+          :schema $ quote $ Fn Number (-> FfiTask)
         'storage-file $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def storage-file
             if (empty? calcit-dirname)
@@ -2167,8 +2183,8 @@
                   records $ :records reel-state
                   session $ match
                     get-in db $ [] :sessions sid
-                    (:ok s) (Option :some s)
-                    (:err _e) (Option :none)
+                    (:ok s) (Some s)
+                    (:err _e) None
                   old-store $ app.decode/optional-wire $ get @*client-caches sid
                   new-store $ twig-container db session records
                   changes $ diff-twig old-store new-store $ {} (:key :id)
@@ -2182,7 +2198,7 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn
-            cumulo-reel.core/ReelState $ Map Tag Dynamic
+            ReelState $ Map Tag Dynamic
             -> Unit
             :features :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
@@ -2234,7 +2250,7 @@
           :code $ quote $ defn read-session-user-name (users session-map)
             match (optional-field session-map :user-id)
               (:some user-id) (read-user-name users user-id)
-              (:none) (Option :none)
+              (:none) None
           :examples $ []
           :schema $ quote $ Fn
             Map String $ Map Tag Dynamic
@@ -2244,25 +2260,22 @@
             :code $ quote $ let
                 users $ {} $ |u
                   {} $ :name "|用户🐈"
-              assert= (Option :some "|用户🐈")
+              assert= (Some "|用户🐈")
                 read-session-user-name users $ {} $ :user-id |u
-              assert= (Option :none)
-                read-session-user-name users $ decode-map-as
-                  {} $ :user-id nil
-                  Map Tag Dynamic
-              assert= (Option :none)
-                read-session-user-name users $ {}
+              assert= None $ read-session-user-name users $ decode-map-as
+                {} $ :user-id nil
+                Map Tag Dynamic
+              assert= None $ read-session-user-name users $ {}
             :tags $ #{} :projection :unit
         'read-user-name $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-user-name (users user-id)
-            if (nil? user-id) (Option :none)
-              let
-                  id $ decode-map-as user-id 'String
-                match
-                  get-in users $ [] id :name
-                  (:err _e) (Option :none)
-                  (:ok value)
-                    Option :some $ decode-map-as value 'String
+            if (nil? user-id) None $ let
+                id $ decode-map-as user-id 'String
+              match
+                get-in users $ [] id :name
+                (:err _e) None
+                (:ok value)
+                  Some $ decode-map-as value 'String
           :examples $ []
           :schema $ quote $ Fn
             Map String $ Map Tag Dynamic
@@ -2274,10 +2287,10 @@
                   users $ {}
                     |u $ {} $ :name "|用户🐈"
                     |empty $ {} $ :name nil
-                assert= (Option :none) (read-user-name users nil)
-                assert= (Option :none) (read-user-name users |missing)
-                assert= (Option :none) (read-user-name users |empty)
-                assert= (Option :some "|用户🐈") (read-user-name users |u)
+                assert= None $ read-user-name users nil
+                assert= None $ read-user-name users |missing
+                assert= None $ read-user-name users |empty
+                assert= (Some "|用户🐈") (read-user-name users |u)
               :tags $ #{} :projection :unit
             %{} 'TestEntry (:name |user-name-rejects-invalid-id-and-name)
               :code $ quote $ let
@@ -2309,7 +2322,7 @@
                 records-list $ decode-map-as records $ List Dynamic
                 db-map $ decode-map-as db $ Map Tag Dynamic
                 session-map $ decode-map-as
-                  option:unwrap-or session $ {}
+                  .unwrap-or session $ {}
                   Map Tag Dynamic
                 user-id $ optional-field session-map :user-id
                 router $ decode-map-as (required-field session-map :router) (Map Tag Dynamic)
@@ -2366,7 +2379,7 @@
                   db $ {}
                     :sessions $ {} $ 7 session-value
                     :users $ {}
-                  projection $ twig-container db (Option :some session-value) ([] |record-a |record-b)
+                  projection $ twig-container db (Some session-value) ([] |record-a |record-b)
                 assert= false $ match (get projection :logged-in?)
                   (:some lookup-value) lookup-value
                   (:none) nil
@@ -2387,7 +2400,7 @@
               :code $ quote $ assert= true
                 try
                   do
-                    twig-container nil (Option :none) ({})
+                    twig-container nil None $ {}
                     , false
                   fn (message)
                     hint-fn $ Fn String $ -> Bool
@@ -2737,7 +2750,7 @@
                 update-in ([] :articles article-id :paragraphs)
                   fn (paragraphs)
                     assoc
-                      option:unwrap-or paragraphs $ {}
+                      .unwrap-or paragraphs $ {}
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
@@ -2785,14 +2798,14 @@
                       update-in ([] :articles article-id :paragraphs)
                         fn (paragraphs)
                           ->
-                            option:unwrap-or paragraphs $ {}
+                            .unwrap-or paragraphs $ {}
                             assoc new-key paragraph
                             dissoc target-key
                       update-in ([] :sessions sid :paragraph-id)
                         fn (old-key)
                           if (present? old-key) new-key nil
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) app.updater.paragraph/MoveKeys Number
+          :schema $ quote $ Fn (Map Tag Dynamic) MoveKeys Number
             -> $ Map Tag Dynamic
         'para-prepend $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn para-prepend (db op-data sid op-id op-time)
@@ -2810,7 +2823,7 @@
                 update-in ([] :articles article-id :paragraphs)
                   fn (paragraphs)
                     assoc
-                      option:unwrap-or paragraphs $ {}
+                      .unwrap-or paragraphs $ {}
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
@@ -2827,7 +2840,7 @@
                   (:none) (raise "|paragraph move requires :base")
               MoveKeys :target target-key :base base-key
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.updater.paragraph/MoveKeys)
+          :schema $ quote $ Fn Dynamic (-> MoveKeys)
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             let
@@ -2838,7 +2851,7 @@
                 update-in ([] :articles article-id :paragraphs)
                   fn (paragraphs)
                     dissoc
-                      option:unwrap-or paragraphs $ {}
+                      .unwrap-or paragraphs $ {}
                       , op-data
                 assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
@@ -2933,7 +2946,7 @@
                 [] :articles article-id :paragraphs $ required-field op-map :id
                 fn (paragraph)
                   ->
-                    option:unwrap-or paragraph $ {}
+                    .unwrap-or paragraph $ {}
                     assoc :time $ required-field op-map :time
                     assoc :content $ required-field op-map :text
           :examples $ []
@@ -2972,7 +2985,7 @@
               fn (messages)
                 dissoc
                   decode-map-as
-                    option:unwrap-or messages $ {}
+                    .unwrap-or messages $ {}
                     Map String Dynamic
                   , message-id
           :examples $ []
@@ -2995,7 +3008,7 @@
             update-in db ([] :sessions sid)
               fn (session)
                 ->
-                  option:unwrap-or session $ {}
+                  .unwrap-or session $ {}
                   assoc :article-id article-id
                   assoc :paragraph-id nil
                   assoc :router $ {} $ :name :article
@@ -3018,7 +3031,7 @@
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
-                  option:unwrap-or (get db-map :users) ({})
+                  .unwrap-or (get db-map :users) ({})
                   Map String $ Map Tag Dynamic
                 maybe-user $ -> users (distinct-values) (.to-list)
                   find $ fn (user)
@@ -3029,11 +3042,11 @@
                 fn (session)
                   let
                       session-map $ decode-map-as
-                        option:unwrap-or session $ {}
+                        .unwrap-or session $ {}
                         Map Tag Dynamic
-                    if (option:some? maybe-user)
+                    if (maybe-user .some?)
                       let
-                          user-map $ decode-map-as (option:unwrap maybe-user) (Map Tag Dynamic)
+                          user-map $ decode-map-as (.unwrap maybe-user) (Map Tag Dynamic)
                         if
                           field-is? user-map :password $ md5 password
                           assoc session-map :user-id $ required-field user-map :id
@@ -3048,7 +3061,7 @@
                           , op-id $ {} (:id op-id)
                             :text $ str "|No user named: " username
           :examples $ []
-          :schema $ quote $ Fn Dynamic app.updater.user/LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :user-id) nil
@@ -3062,7 +3075,7 @@
                 password $ decode-map-as (&list:nth fields 1) 'String
               LoginCredentials :username username :password password
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.updater.user/LoginCredentials)
+          :schema $ quote $ Fn Dynamic (-> LoginCredentials)
           :tests $ []
             %{} 'TestEntry (:name |credentials-strings-and-extra-fields)
               :code $ quote $ let
@@ -3100,7 +3113,7 @@
                 username $ :username credentials
                 password $ :password credentials
                 users $ decode-map-as
-                  option:unwrap-or (get db-map :users) ({})
+                  .unwrap-or (get db-map :users) ({})
                   Map String $ Map Tag Dynamic
                 maybe-user $ find
                   .to-list $ distinct-values users
@@ -3108,11 +3121,11 @@
                     field-is?
                       decode-map-as user $ Map Tag Dynamic
                       , :name username
-              if (option:some? maybe-user)
+              if (maybe-user .some?)
                 update-in db-map ([] :sessions sid :messages)
                   fn (messages)
                     assoc
-                      option:unwrap-or messages $ {}
+                      .unwrap-or messages $ {}
                       , op-id $ {} (:id op-id)
                         :text $ str "|Name is taken: " username
                 -> db-map
@@ -3122,7 +3135,7 @@
                       :password $ md5 password
                       :avatar nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic app.updater.user/LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
           :require
@@ -3154,7 +3167,7 @@
                 let
                     el $ query-selector target
                   if (el .some?)
-                    .focus! $ option:unwrap el
+                    .focus! $ el .unwrap
                     js/console.warn "|focus target box not ready."
                 , &unit
               , duration
