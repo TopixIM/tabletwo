@@ -345,7 +345,7 @@
                 value-map $ decode-map-as value $ Map Tag Dynamic
               decode-map-as (required-field value-map :title) 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> String)
+          :schema $ quote $ Fn T (-> String) (:generics T)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-text)
               :code $ quote $ do
@@ -378,8 +378,9 @@
                   Some $ decode-map-as raw-name 'String
                 (:none) None
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn T
             -> $ Option String
+            :generics T
           :tests $ [] $ %{} 'TestEntry (:name |missing-name-remains-absent)
             :code $ quote $ do
               assert= None $ read-focus-name $ {}
@@ -795,7 +796,7 @@
                 decode-map-as (required-field state-map :text) 'String
                 decode-map-as (required-field paragraph-map :content) 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> String)
+          :schema $ quote $ Fn S P (-> String) (:generics S P)
           :tests $ []
             %{} 'TestEntry (:name |strictly-newer-local-edit-wins)
               :code $ quote $ do
@@ -1069,7 +1070,7 @@
                 decode-map-as (required-field state-map :username) 'String
                 , :password $ decode-map-as (required-field state-map :password) 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> LoginFields)
+          :schema $ quote $ Fn T (-> LoginFields) (:generics T)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-fields-preserve-extras)
               :code $ quote $ let
@@ -1434,8 +1435,9 @@
             if (nil? value) ([])
               decode-map-as value $ List $ Map Tag Dynamic
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn T
             -> $ List $ Map Tag Dynamic
+            :generics T
           :tests $ []
             %{} 'TestEntry
               :name |absent-focus-is-empty-and-numeric-session-key-is-preserved
@@ -1461,7 +1463,7 @@
                 value-map $ decode-map-as value $ Map Tag Dynamic
               decode-map-as (required-field value-map :content) 'String
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> String)
+          :schema $ quote $ Fn T (-> String) (:generics T)
           :tests $ []
             %{} 'TestEntry (:name |empty-and-unicode-text)
               :code $ quote $ do
@@ -1737,8 +1739,9 @@
               fn (session-id raw)
                 MapEntryDecision :keep session-id $ if (nil? raw) None $ Some (decode-map-as raw String)
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn T
             -> $ Map Number $ Option String
+            :generics T
           :tests $ []
             %{} 'TestEntry
               :name |numeric-session-keys-preserve-string-and-absent-names
