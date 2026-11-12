@@ -43,7 +43,7 @@
                   :on-close $ fn (event) (reset! *store None) (js/console.error |Disconnected)
                   :on-data on-server-data
           :examples $ []
-          :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :js-ffi)
+          :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :io :js-ffi :state)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (action)
             when
@@ -58,7 +58,7 @@
                 :data $ payload-to-wire action
             , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/Op (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :io :js-ffi :state)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             let
@@ -85,7 +85,7 @@
               println |App-started!
               , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
             (query-selector |.app) .unwrap
@@ -109,7 +109,7 @@
                 js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi :state)
         'payload-to-wire $ %{} 'CodeEntry
           :doc "|Encode the existing :data field, keeping edit payloads and notification IDs as legacy Maps, and empty payloads as nil."
           :code $ quote $ defn payload-to-wire (action)
@@ -160,7 +160,7 @@
                 println "|Code updated."
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! mount-target
@@ -169,7 +169,7 @@
                 , @*store
               , dispatch!
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'simulate-login! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn simulate-login! ()
             match
@@ -180,7 +180,7 @@
               (:none) (println "|Found no storage.")
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.client
           :require
@@ -289,7 +289,7 @@
                 .render edit-plugin
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
         'comp-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-articles (states router-data)
             let
@@ -338,7 +338,7 @@
                     <> "|Create Article"
                 .render create-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
         'read-article-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-article-title (value)
             let
@@ -477,7 +477,7 @@
           :schema $ quote $ Fn Dynamic
             Option $ Map Tag Dynamic
             -> respo.schema/Component
-            :features :js-ffi
+            :features :io :js-ffi
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
             div
@@ -784,7 +784,7 @@
                   (:none) None
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
         'read-editor-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-editor-text (state paragraph)
             let
@@ -1668,7 +1668,7 @@
         'legacy-wire-nil $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def legacy-wire-nil nil
           :examples $ []
-          :schema $ quote $ JsNullish Never
+          :schema $ quote Nil
         'option-is? $ %{} 'CodeEntry
           :doc "|True when the Option holds a value equal to expected."
           :code $ quote $ defn option-is? (value expected)
@@ -2056,7 +2056,7 @@
                 reset! *reel $ reel-reducer @*reel updater (:: op op-data) sid op-id op-time config/dev?
               , &unit
           :examples $ []
-          :schema $ quote $ Fn Tag Dynamic Number (-> Unit)
+          :schema $ quote $ Fn Tag Dynamic Number (-> Unit) (:features :io :state)
           :tests $ [] $ %{} 'TestEntry (:name |unit-result-preserves-state-transition)
             :code $ quote $ let
                 reel-before @*reel
@@ -2098,11 +2098,11 @@
             set-interval! 600000 $ fn () $ persist-db!
             on-control-c on-exit!
           :examples $ []
-          :schema $ quote $ Fn (-> Dynamic)
+          :schema $ quote $ Fn (-> Dynamic) (:features :io :state)
         'on-exit! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-exit! () (persist-db!) (; println "|exit code is...") (quit! 0)
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
         'persist-db! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-db! ()
             let
@@ -2113,7 +2113,7 @@
               check-write-file! backup-path file-content
               , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (println "|Code updated..")
             if (not config/dev?) (raise "|reloading only happens in dev mode")
@@ -2123,7 +2123,7 @@
               , replay-updater
             sync-clients! @*reader-reel
           :examples $ []
-          :schema $ quote $ Fn (-> Dynamic)
+          :schema $ quote $ Fn (-> Dynamic) (:features :io :state)
         'render-loop! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-loop! ()
             when
@@ -2132,7 +2132,7 @@
               sync-clients! @*reader-reel
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :state)
           :tests $ [] $ %{} 'TestEntry (:name |unchanged-reel-still-returns-unit)
             :code $ quote $ let
                 original @*reader-reel
@@ -2149,6 +2149,7 @@
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) Dynamic Dynamic Dynamic Dynamic
             -> $ Map Tag Dynamic
+            :features :io
         'run-server! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-server! (port)
             wss-serve! (&{} :port port)
@@ -2169,7 +2170,7 @@
                     do (println "|Client closed!") (dispatch! :session/disconnect nil sid)
                   _ $ println "|unknown data:" data
           :examples $ []
-          :schema $ quote $ Fn Number (-> FfiTask)
+          :schema $ quote $ Fn Number (-> FfiTask) (:features :io :state)
         'storage-file $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def storage-file
             if (empty? calcit-dirname)
@@ -2203,7 +2204,7 @@
           :schema $ quote $ Fn
             ReelState $ Map Tag Dynamic
             -> Unit
-            :features :js-ffi
+            :features :js-ffi :state
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.server
           :require (app.schema :as schema)
@@ -2545,6 +2546,7 @@
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) AnyEnum Number String Number
             -> $ Map Tag Dynamic
+            :features :io
             :open :decode
           :tests $ []
             %{} 'TestEntry
@@ -2843,7 +2845,7 @@
                   (:none) (raise "|paragraph move requires :base")
               MoveKeys :target target-key :base base-key
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> MoveKeys)
+          :schema $ quote $ Fn Input (-> MoveKeys) (:generics Input)
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             let
@@ -3078,7 +3080,7 @@
                 password $ decode-map-as (&list:nth fields 1) 'String
               LoginCredentials :username username :password password
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> LoginCredentials)
+          :schema $ quote $ Fn Input (-> LoginCredentials) (:generics Input)
           :tests $ []
             %{} 'TestEntry (:name |credentials-strings-and-extra-fields)
               :code $ quote $ let
@@ -3162,6 +3164,7 @@
           :schema $ quote $ Fn
             Fn *dispatch-op $ -> Unit
             -> $ Fn AnyEnum $ -> Unit
+            :features :io
             :open :decode
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
