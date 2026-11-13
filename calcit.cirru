@@ -100,6 +100,17 @@
             :code $ quote $ do
               assert= |a $ app.decode/optional-wire $ encode-op-payload (app.schema/Op :paragraph/append-to |a)
               assert= nil $ app.decode/optional-wire $ encode-op-payload (app.schema/Op :user/log-out)
+              assert= nil $ app.decode/optional-wire $ encode-op-payload (app.schema/Op :paragraph/prepend)
+              assert= ([] |reader |password)
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :user/log-in ([] |reader |password)
+              assert=
+                {} $ :name :article
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :router/change
+                  {} $ :name :article
+              assert=
+                {} $ :target |paragraph-1
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :paragraph/move
+                  {} $ :target |paragraph-1
               assert=
                 {} $ :id |m-1
                 app.decode/optional-wire $ encode-op-payload $ app.schema/Op :session/remove-message |m-1
