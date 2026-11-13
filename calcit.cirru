@@ -2572,7 +2572,14 @@
                 (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
                 (:paragraph/append-to op-data)
                   paragraph/append-to db (decode-map-as op-data 'String) sid op-id op-time
-                (:paragraph/content op-data) (paragraph/update-content db op-data sid op-id op-time)
+                (:paragraph/content op-data)
+                  let
+                      fields $ decode-map-as op-data $ Map Tag Dynamic
+                      id $ decode-map-as (app.decode/required-field fields :id) 'String
+                      time $ decode-map-as (app.decode/required-field fields :time) 'Number
+                      text $ decode-map-as (app.decode/required-field fields :text) 'String
+                      edit $ schema/ParagraphContent :id id :time time :text text
+                    paragraph/update-content db edit sid op-id op-time
                 (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
                 (:paragraph/move op-data)
                   paragraph/move db (paragraph/read-move-keys op-data) sid
@@ -2580,7 +2587,13 @@
                 (:paragraph/finish-editing op-data) (paragraph/finish-editing db op-data sid op-id op-time)
                 (:article/create op-data) (article/create db op-data sid op-id op-time)
                 (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
-                (:article/title op-data) (article/change-title db op-data sid op-id op-time)
+                (:article/title op-data)
+                  let
+                      fields $ decode-map-as op-data $ Map Tag Dynamic
+                      id $ decode-map-as (app.decode/required-field fields :id) 'String
+                      title $ decode-map-as (app.decode/required-field fields :title) 'String
+                      edit $ schema/ArticleTitle :id id :title title
+                    article/change-title db edit sid op-id op-time
                 _ $ do (println "|Unknown op:" op) db
               Map Tag Dynamic
           :examples $ []
@@ -2746,18 +2759,16 @@
               :tags $ #{} :business :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article)
+          :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article) (app.schema :as schema)
     'app.updater.article $ %{} 'FileEntry
       :defs $ {}
         'change-title $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn change-title (db op-data sid op-id op-time)
-            let
-                op-map $ decode-map-as op-data $ Map Tag Dynamic
-              assoc-in db
-                [] :articles (required-field op-map :id) :title
-                required-field op-map :title
+          :code $ quote $ defn change-title (db edit sid op-id op-time)
+            assoc-in db
+              [] :articles (:id edit) :title
+              :title edit
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic schema/ArticleTitle Number String Number (-> Dynamic)
         'create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create (db op-data sid op-id op-time)
             assoc-in db ([] :articles op-id)
@@ -2771,8 +2782,7 @@
           :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.article
-          :require (app.schema :as schema)
-            app.decode :refer $ required-field
+          :require $ app.schema :as schema
     'app.updater.paragraph $ %{} 'FileEntry
       :defs $ {}
         'MoveKeys $ %{} 'CodeEntry (:doc |)
@@ -2981,21 +2991,20 @@
                   , :paragraph-id
               :tags $ #{} :business :unit
         'update-content $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn update-content (db op-data sid op-id op-time)
+          :code $ quote $ defn update-content (db edit sid op-id op-time)
             let
-                op-map $ decode-map-as op-data $ Map Tag Dynamic
                 article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
                   , nil
               update-in db
-                [] :articles article-id :paragraphs $ required-field op-map :id
+                [] :articles article-id :paragraphs $ :id edit
                 fn (paragraph)
                   ->
                     .unwrap-or paragraph $ {}
-                    assoc :time $ required-field op-map :time
-                    assoc :content $ required-field op-map :text
+                    assoc :time $ :time edit
+                    assoc :content $ :text edit
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic schema/ParagraphContent Number String Number (-> Dynamic)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
           :require (bisection-key.util :as bisection-util) (app.schema :as schema)
