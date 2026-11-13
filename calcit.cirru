@@ -55,10 +55,61 @@
               (:effect/connect) (connect!)
               _ $ ws-send! $ {} (:kind :op)
                 :op $ &enum:nth action 0
-                :data $ payload-to-wire action
+                :data $ app.decode/optional-wire $ encode-op-payload action
             , &unit
           :examples $ []
           :schema $ quote $ Fn schema/Op (-> Unit) (:features :io :js-ffi :state)
+        'encode-op-payload $ %{} 'CodeEntry
+          :doc "|Encode the existing wire payload. The WebSocket boundary converts None to legacy nil."
+          :code $ quote $ defn encode-op-payload (action)
+            decode-map-as
+              match action
+                (:session/remove-message id)
+                  Some $ {} $ :id id
+                (:article/title edit)
+                  Some $ {}
+                    :id $ :id edit
+                    :title $ :title edit
+                (:paragraph/content edit)
+                  Some $ {}
+                    :id $ :id edit
+                    :time $ :time edit
+                    :text $ :text edit
+                (:states _ _) None
+                (:effect/connect) None
+                (:session/connect) None
+                (:session/disconnect) None
+                (:session/view-article value) (Some value)
+                (:user/log-in value) (Some value)
+                (:user/sign-up value) (Some value)
+                (:user/log-out) None
+                (:router/change value) (Some value)
+                (:paragraph/prepend) None
+                (:paragraph/append-to value) (Some value)
+                (:paragraph/remove value) (Some value)
+                (:paragraph/move value) (Some value)
+                (:paragraph/edit value) (Some value)
+                (:paragraph/finish-editing value) (Some value)
+                (:article/create value) (Some value)
+                (:article/remove-one value) (Some value)
+              Option app.schema/OpPayload
+          :examples $ []
+          :schema $ quote $ Fn schema/Op
+            -> $ Option schema/OpPayload
+          :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
+            :code $ quote $ do
+              assert= |a $ app.decode/optional-wire $ encode-op-payload (app.schema/Op :paragraph/append-to |a)
+              assert= nil $ app.decode/optional-wire $ encode-op-payload (app.schema/Op :user/log-out)
+              assert=
+                {} $ :id |m-1
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :session/remove-message |m-1
+              assert=
+                {} (:id |a-1) (:title "|标题🐈")
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :article/title (app.schema/ArticleTitle :id |a-1 :title "|标题🐈")
+              assert=
+                {} (:id |p-1) (:time 42) (:text "|正文🌱")
+                app.decode/optional-wire $ encode-op-payload $ app.schema/Op :paragraph/content (app.schema/ParagraphContent :id |p-1 :time 42 :text "|正文🌱")
+            :tags $ #{} :operation :unit
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             let
@@ -110,38 +161,6 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi :state)
-        'payload-to-wire $ %{} 'CodeEntry
-          :doc "|Encode the existing :data field, keeping edit payloads and notification IDs as legacy Maps, and empty payloads as nil."
-          :code $ quote $ defn payload-to-wire (action)
-            match action
-              (:session/remove-message id)
-                {} $ :id id
-              (:article/title edit)
-                {}
-                  :id $ :id edit
-                  :title $ :title edit
-              (:paragraph/content edit)
-                {}
-                  :id $ :id edit
-                  :time $ :time edit
-                  :text $ :text edit
-              _ $ app.decode/optional-wire $ first (&enum:params action)
-          :examples $ []
-          :schema $ quote $ Fn schema/Op (-> Dynamic)
-          :tests $ [] $ %{} 'TestEntry (:name |first-param-or-nil)
-            :code $ quote $ do
-              assert= |a $ payload-to-wire $ app.schema/Op :paragraph/append-to |a
-              assert= nil $ payload-to-wire $ app.schema/Op :user/log-out
-              assert=
-                {} $ :id |m-1
-                payload-to-wire $ app.schema/Op :session/remove-message |m-1
-              assert=
-                {} (:id |a-1) (:title "|标题🐈")
-                payload-to-wire $ app.schema/Op :article/title $ app.schema/ArticleTitle :id |a-1 :title "|标题🐈"
-              assert=
-                {} (:id |p-1) (:time 42) (:text "|正文🌱")
-                payload-to-wire $ app.schema/Op :paragraph/content $ app.schema/ParagraphContent :id |p-1 :time 42 :text "|正文🌱"
-            :tags $ #{} :operation :unit
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if
@@ -1890,10 +1909,18 @@
             :article/title app.schema/ArticleTitle
           :examples $ []
           :schema $ quote EnumDef
+        'OpPayload $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion OpPayload String (List String) (Map Tag app.schema/WireField)
+          :examples $ []
+          :schema $ quote UnionDef
         'ParagraphContent $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct ParagraphContent (:id String) (:time Number) (:text String)
           :examples $ []
           :schema $ quote StructDef
+        'WireField $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion WireField String Number Tag
+          :examples $ []
+          :schema $ quote UnionDef
         'article $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def article
             {} (:id nil)
@@ -2036,7 +2063,7 @@
           :schema $ quote $ Ref
             ReelState $ Map Tag Dynamic
         'action-data-from-wire $ %{} 'CodeEntry
-          :doc "|Wire decoder for the op payload sent by app.client/payload-to-wire. Updaters take nil op-data for payload-less ops such as :user/log-out, so a missing :data key decodes to nil as well."
+          :doc "|Wire decoder for the op payload sent by app.client/encode-op-payload. Updaters take nil op-data for payload-less ops such as :user/log-out, so a missing :data key decodes to nil as well."
           :code $ quote $ defn action-data-from-wire (action)
             app.decode/optional-wire $ get action :data
           :examples $ []
