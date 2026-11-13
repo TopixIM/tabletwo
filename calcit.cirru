@@ -2228,14 +2228,14 @@
           :code $ quote $ def button
             merge ui/button $ {} (:background-color :white) (:border "|1px solid #ccc") (:color |#ccc) (:border-radius |16px)
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag respo-ui.schema/StyleValue
         'link $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def link
             {} (:text-decoration :underline) (:cursor :pointer)
               :color $ hsl 240 80 80
               :font-family ui/font-fancy
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag respo.schema/CssValue
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.style
           :require
@@ -2342,8 +2342,8 @@
                 match user-id
                   (:some logged-in-id)
                     {}
-                      :user $ twig-user $ result:unwrap-or
-                        get-in db-map $ [] :users logged-in-id
+                      :user $ twig-user $ if (string? logged-in-id)
+                        .unwrap-or (get users logged-in-id) ({})
                         {}
                       :router $ assoc router :data $ match (get router :name)
                         (:some route-name)
@@ -2505,7 +2505,9 @@
         %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-user (user) (dissoc user :password)
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag V)
+            -> $ Map Tag V
+            :generics V
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.twig.user
           :require $ recollect.twig :refer $ deftwig
