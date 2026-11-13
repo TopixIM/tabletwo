@@ -541,7 +541,7 @@
                     Some $ decode-map-as raw-count 'Number
                   (:none) None
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> NavigationView)
+          :schema $ quote $ Fn StoreInput (-> NavigationView) (:generics StoreInput)
           :tests $ []
             %{} 'TestEntry (:name |guest-count-is-absent-not-zero)
               :code $ quote $ let
@@ -600,7 +600,7 @@
                 store-map $ decode-map-as store $ Map Tag Dynamic
               decode-map-as (required-field store-map :reel-length) 'Number
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Number)
+          :schema $ quote $ Fn StoreInput (-> Number) (:generics StoreInput)
           :tests $ []
             %{} 'TestEntry (:name |preserves-zero-and-numeric-record-count)
               :code $ quote $ do
@@ -653,7 +653,7 @@
                 field-or router :data $ {}
                 , :paragraph-id paragraph-id :color color :messages messages
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> StoreView)
+          :schema $ quote $ Fn StoreInput (-> StoreView) (:generics StoreInput)
           :tests $ []
             %{} 'TestEntry (:name |guest-store-has-empty-router)
               :code $ quote $ let
