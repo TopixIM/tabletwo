@@ -171,7 +171,7 @@
                 js/console.warn "|unknown server data kind:" data
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit) (:features :js-ffi :state)
+          :schema $ quote $ Fn Input (-> Unit) (:generics Input) (:features :js-ffi :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if
@@ -1961,7 +1961,7 @@
           :code $ quote $ defn read-dispatch-operation (value)
             if (enum? value) value $ raise |Invalid-render-operation
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> AnyEnum) (:open :decode)
+          :schema $ quote $ Fn Input (-> AnyEnum) (:generics Input) (:open :decode)
           :tests $ []
             %{} 'TestEntry (:name |dispatch-preserves-enum-payload)
               :code $ quote $ let
@@ -1985,8 +1985,9 @@
         'read-patch-changes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-patch-changes (value) (recollect.schema/decode-changes value)
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ List recollect.schema/change-op
+            :generics Input
           :tests $ []
             %{} 'TestEntry (:name |patch-empty-and-valid-enums)
               :code $ quote $ let
