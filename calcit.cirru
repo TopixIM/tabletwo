@@ -2186,8 +2186,9 @@
               updater db op (decode-map-as sid 'Number) (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
               raise "|replay operation must be an Enum"
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) Dynamic Dynamic Dynamic Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) Operation SessionId OperationId OperationTime
             -> $ Map Tag Dynamic
+            :generics Operation SessionId OperationId OperationTime
             :features :io
         'run-server! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn run-server! (port)
