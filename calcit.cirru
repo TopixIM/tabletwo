@@ -2334,7 +2334,20 @@
               fn (k v)
                 MapEntryDecision :keep k $ dissoc v :paragraphs
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Dynamic)
+          :schema $ quote $ Fn Input
+            -> $ Map String $ Map Tag Dynamic
+            :generics Input
+          :tests $ [] $ %{} 'TestEntry (:name |keeps-summary-fields)
+            :code $ quote $ let
+                articles $ {} $ |a
+                  {} (:title |Title) (:custom false)
+                    :paragraphs $ [] |text
+                summaries $ assert-type (twig-articles articles)
+                  Map String $ Map Tag Dynamic
+              assert=
+                {} $ |a $ {} (:title |Title) (:custom false)
+                , summaries
+            :tags $ #{} :unit
         'twig-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-container (db session records)
             let
