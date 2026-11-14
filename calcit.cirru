@@ -2826,7 +2826,8 @@
           :code $ quote $ defn finish-editing (db sid)
             -> db $ assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'move $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn move (db move-keys sid)
             let
