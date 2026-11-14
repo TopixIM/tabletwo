@@ -2839,7 +2839,8 @@
           :code $ quote $ defn finish-editing (db sid)
             -> db $ assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'move $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn move (db move-keys sid)
             let
@@ -2894,7 +2895,8 @@
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
-          :schema $ quote $ Fn Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number String Number
+            -> $ Map Tag Dynamic
         'read-move-keys $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-move-keys (raw)
             let
@@ -3016,7 +3018,8 @@
                     assoc :time $ :time edit
                     assoc :content $ :text edit
           :examples $ []
-          :schema $ quote $ Fn Dynamic schema/ParagraphContent Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) schema/ParagraphContent Number String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
           :require (bisection-key.util :as bisection-util) (app.schema :as schema)
