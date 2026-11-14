@@ -3203,7 +3203,7 @@
               hint-fn $ Fn AnyEnum $ -> Unit
               match op
                 (:states cursor state)
-                  d! $ :: :states
+                  d! $ app.schema/Op :states
                     decode-map-as cursor $ List respo.schema/CoordKey
                     , state
                 _ $ eprintln "|Unexpected op from alerts:" op
@@ -3214,6 +3214,19 @@
             -> $ Fn AnyEnum $ -> Unit
             :features :io
             :open :decode
+          :tests $ [] $ %{} 'TestEntry (:name |converts-legacy-alert-state-to-nominal-op)
+            :code $ quote $ let
+                cursor $ [] :dialog 1
+                state $ {} $ :open? true
+                called? $ ref false
+                dispatch $ fn (op)
+                  hint-fn $ Fn app.schema/Op $ -> Unit
+                  assert= (app.schema/Op :states cursor state) op
+                  reset! called? true
+                  , &unit
+              (alert-dispatch dispatch) (:: :states cursor state)
+              assert= true @called?
+            :tags $ #{} :operation :unit
         'delay-focus! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn delay-focus! (duration target)
             set-timeout!
