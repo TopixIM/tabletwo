@@ -1957,31 +1957,6 @@
             {} (:id nil) (:content |) (:time nil)
           :examples $ []
           :schema $ quote $ Map Tag Dynamic
-        'read-dispatch-operation $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn read-dispatch-operation (value)
-            if (enum? value) value $ raise |Invalid-render-operation
-          :examples $ []
-          :schema $ quote $ Fn Input (-> AnyEnum) (:generics Input) (:open :decode)
-          :tests $ []
-            %{} 'TestEntry (:name |dispatch-preserves-enum-payload)
-              :code $ quote $ let
-                  op $ :: :states ([] :article 42)
-                    {} $ :text "|正文🐈"
-                assert= op $ read-dispatch-operation op
-              :tags $ #{} :operation :unit
-            %{} 'TestEntry (:name |dispatch-rejects-non-enum-input)
-              :code $ quote $ let
-                  rejected? $ fn (value)
-                    hint-fn $ Fn Dynamic $ -> Bool
-                    try
-                      do (read-dispatch-operation value) false
-                      fn (message)
-                        hint-fn $ Fn String $ -> Bool
-                        &= message |Invalid-render-operation
-                assert= true $ rejected? nil
-                assert= true $ rejected? $ {}
-                assert= true $ rejected? |operation
-              :tags $ #{} :operation :unit
         'read-patch-changes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-patch-changes (value) (recollect.schema/decode-changes value)
           :examples $ []
