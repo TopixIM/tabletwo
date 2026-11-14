@@ -1951,7 +1951,7 @@
           :code $ quote $ def notification
             {} (:id nil) (:kind nil) (:text nil)
           :examples $ []
-          :schema $ quote Dynamic
+          :schema $ quote $ Map Tag Nil
         'paragraph $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def paragraph
             {} (:id nil) (:content |) (:time nil)
@@ -2017,7 +2017,7 @@
           :code $ quote $ def user
             {} (:name nil) (:id nil) (:nickname nil) (:avatar nil) (:password nil)
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote $ Map Tag Nil
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.server $ %{} 'FileEntry
