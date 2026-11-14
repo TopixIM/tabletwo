@@ -2567,11 +2567,11 @@
                   user/log-in db (user/read-login-credentials op-data) sid op-id op-time
                 (:user/sign-up op-data)
                   user/sign-up db (user/read-login-credentials op-data) sid op-id op-time
-                (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
+                (:user/log-out op-data) (user/log-out db sid)
                 (:session/view-article op-data)
                   session/view-article db (decode-map-as op-data 'String) sid
                 (:router/change op-data) (router/change db op-data sid op-id op-time)
-                (:paragraph/prepend op-data) (paragraph/para-prepend db op-data sid op-id op-time)
+                (:paragraph/prepend op-data) (paragraph/para-prepend db sid op-id op-time)
                 (:paragraph/append-to op-data)
                   paragraph/append-to db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/content op-data)
@@ -2887,7 +2887,7 @@
           :schema $ quote $ Fn (Map Tag Dynamic) MoveKeys Number
             -> $ Map Tag Dynamic
         'para-prepend $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn para-prepend (db op-data sid op-id op-time)
+          :code $ quote $ defn para-prepend (db sid op-id op-time)
             let
                 article-id $ result:unwrap-or
                   get-in db $ [] :sessions sid :article-id
@@ -2906,7 +2906,7 @@
                       , new-key $ merge schema/paragraph $ {} (:id op-id) (:time op-time)
                 assoc-in ([] :sessions sid :paragraph-id) new-key
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic Number String Number (-> Dynamic)
         'read-move-keys $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-move-keys (raw)
             let
@@ -3141,10 +3141,10 @@
           :examples $ []
           :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
         'log-out $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn log-out (db op-data session-id op-id op-time)
+          :code $ quote $ defn log-out (db session-id)
             assoc-in db ([] :sessions session-id :user-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn Dynamic Number (-> Dynamic)
         'read-login-credentials $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-credentials (value)
             let
