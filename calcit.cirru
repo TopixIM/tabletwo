@@ -3005,7 +3005,7 @@
                     assoc :time $ :time edit
                     assoc :content $ :text edit
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) app.schema/ParagraphContent Number String Number
+          :schema $ quote $ Fn (Map Tag Dynamic) schema/ParagraphContent Number String Number
             -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.paragraph
