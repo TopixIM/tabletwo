@@ -2271,10 +2271,9 @@
               (:some user-id) (read-user-name users user-id)
               (:none) None
           :examples $ []
-          :schema $ quote $ Fn
-            Map String $ Map Tag Dynamic
-            Map Tag Dynamic
+          :schema $ quote $ Fn (Map String UserValue) (Map Tag SessionValue)
             -> $ Option String
+            :generics UserValue SessionValue
           :tests $ [] $ %{} 'TestEntry (:name |guest-and-member-sessions)
             :code $ quote $ let
                 users $ {} $ |u
@@ -2296,10 +2295,9 @@
                 (:ok value)
                   Some $ decode-map-as value 'String
           :examples $ []
-          :schema $ quote $ Fn
-            Map String $ Map Tag Dynamic
-            , Dynamic
-              -> $ Option String
+          :schema $ quote $ Fn (Map String UserValue) UserId
+            -> $ Option String
+            :generics UserValue UserId
           :tests $ []
             %{} 'TestEntry (:name |user-name-preserves-guest-missing-and-unicode)
               :code $ quote $ let
