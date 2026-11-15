@@ -2470,7 +2470,9 @@
                     decode-map-as (required-field x :id) 'String
               , result
           :examples $ []
-          :schema $ quote $ Fn Tag Dynamic Dynamic (-> Dynamic)
+          :schema $ quote $ Fn Tag Sessions Users
+            -> $ Map String $ List (Map Tag Dynamic)
+            :generics Sessions Users
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (article-id sessions users)
             let
