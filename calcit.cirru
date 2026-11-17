@@ -268,7 +268,7 @@
                         :cursor :pointer
                       fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
+                          Fn *dispatch-op (-> Unit) (:features :io :state)
                           -> Unit
                         .show edit-plugin (alert-dispatch d!)
                           fn (result)
@@ -288,7 +288,7 @@
                         :cursor :pointer
                       fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
+                          Fn *dispatch-op (-> Unit) (:features :io :state)
                           -> Unit
                         .show remove-plugin (alert-dispatch d!)
                           fn ()
@@ -319,7 +319,7 @@
                 .render edit-plugin
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-articles (states router-data)
             let
@@ -353,7 +353,7 @@
                       :style $ merge style/button $ {} (:padding "|4px 16px")
                       :on-click $ fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
+                          Fn *dispatch-op (-> Unit) (:features :io :state)
                           -> Unit
                         .show create-plugin (alert-dispatch d!)
                           fn (result)
@@ -368,7 +368,7 @@
                     <> "|Create Article"
                 .render create-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'read-article-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-article-title (value)
             let
@@ -507,7 +507,7 @@
           :schema $ quote $ Fn Dynamic
             Option $ Map Tag Dynamic
             -> respo.schema/Component
-            :features :io :js-ffi
+            :features :io :js-ffi :state
         'comp-offline $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-offline ()
             div
@@ -778,7 +778,7 @@
                       textarea $ EditorInputProps :style style-editor-input :class-name |editor-area :placeholder |Paragraph :value (read-editor-text state paragraph-map) :on-input
                         fn (e d!)
                           hint-fn $ Fn respo.schema/RespoEvent
-                            Fn *dispatch-op $ -> Unit
+                            Fn *dispatch-op (-> Unit) (:features :io :state)
                             -> Unit
                           let
                               timestamp $ decode-map-as (js/Date.now) 'Number
@@ -789,7 +789,7 @@
                             , &unit
                         , :on-keydown $ fn (e d!)
                           hint-fn $ Fn respo.schema/RespoEvent
-                            Fn *dispatch-op $ -> Unit
+                            Fn *dispatch-op (-> Unit) (:features :io :state)
                             -> Unit
                           when
                             = (:keycode e) 27
@@ -803,7 +803,7 @@
                         :color $ hsl 200 80 70
                       fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
-                          Fn *dispatch-op $ -> Unit
+                          Fn *dispatch-op (-> Unit) (:features :io :state)
                           -> Unit
                         .show remove-plugin (alert-dispatch d!)
                           fn ()
@@ -814,7 +814,7 @@
                   (:none) None
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :io :js-ffi)
+          :schema $ quote $ Fn Dynamic (Option String) Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'read-editor-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-editor-text (state paragraph)
             let
@@ -895,7 +895,7 @@
             div
               ToolbarDragProps :style style-editor-toolbar :draggable true :on-dragstart $ fn (e d!)
                 hint-fn $ Fn respo.schema/RespoEvent
-                  Fn *dispatch-op $ -> Unit
+                  Fn *dispatch-op (-> Unit) (:features :io :state)
                   -> Unit
                 let
                     event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
@@ -908,7 +908,7 @@
                   , :on-click $ on-close states sort-id
                 comp-i :chevron-down 14 $ hsl 200 80 70
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'dispatch-editor-close! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-editor-close! (cursor paragraph-key dispatch!)
             dispatch! $ :: :paragraph/finish-editing paragraph-key
@@ -916,8 +916,9 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn (List respo.schema/CoordKey) String
-            Fn *dispatch-op $ -> Unit
+            Fn *dispatch-op (-> Unit) (:features :io :state)
             -> Unit
+            :features :io :state
         'on-close $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-close (states sort-id)
             let
@@ -928,11 +929,11 @@
                 paragraph-key $ decode-map-as sort-id 'String
               fn (event dispatch!)
                 hint-fn $ Fn respo.schema/RespoEvent
-                  Fn *dispatch-op $ -> Unit
+                  Fn *dispatch-op (-> Unit) (:features :io :state)
                   -> Unit
                 dispatch-editor-close! cursor paragraph-key dispatch!
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/EventHandler)
+          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/EventHandler) (:features :io :state)
           :tests $ []
             %{} 'TestEntry (:name |dispatches-finish-before-clear-on-mixed-cursor)
               :code $ quote $ let
@@ -1024,15 +1025,16 @@
                       :style $ merge style/link
                       :on-click $ on-submit (:username fields) (:password fields) false
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'dispatch-input! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-input! (cursor state field value dispatch!)
             dispatch! $ :: :states cursor $ assoc state field (decode-map-as value String)
             , &unit
           :examples $ []
           :schema $ quote $ Fn (List respo.schema/CoordKey) (Map Tag Dynamic) Tag Dynamic
-            Fn *dispatch-op $ -> Unit
+            Fn *dispatch-op (-> Unit) (:features :io :state)
             -> Unit
+            :features :io :state
         'initial-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def initial-state
             {} (:username |) (:password |)
@@ -1042,11 +1044,11 @@
           :code $ quote $ defn on-input (cursor state field)
             fn (event dispatch!)
               hint-fn $ Fn respo.schema/RespoEvent
-                Fn *dispatch-op $ -> Unit
+                Fn *dispatch-op (-> Unit) (:features :io :state)
                 -> Unit
               dispatch-input! cursor state field (:value event) dispatch!
           :examples $ []
-          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map Tag Dynamic) Tag (-> respo.schema/EventHandler)
+          :schema $ quote $ Fn (List respo.schema/CoordKey) (Map Tag Dynamic) Tag (-> respo.schema/EventHandler) (:features :io :state)
           :tests $ []
             %{} 'TestEntry (:name |dispatches-one-state-enum-with-mixed-cursor)
               :code $ quote $ let
@@ -1082,7 +1084,7 @@
           :code $ quote $ defn on-submit (username password signup?)
             fn (e dispatch!)
               hint-fn $ Fn respo.schema/RespoEvent
-                Fn *dispatch-op $ -> Unit
+                Fn *dispatch-op (-> Unit) (:features :io :state)
                 -> Unit
               if signup?
                 dispatch! $ :: :user/sign-up $ [] username password
@@ -1091,7 +1093,7 @@
                 format-cirru-edn $ [] username password
               , &unit
           :examples $ []
-          :schema $ quote $ Fn String String Bool (-> respo.schema/EventHandler) (:features :js-ffi)
+          :schema $ quote $ Fn String String Bool (-> respo.schema/EventHandler) (:features :io :js-ffi :state)
         'read-login-fields $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-fields (state)
             let
@@ -1166,7 +1168,7 @@
                   NavigationProps :on-click
                     fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn *dispatch-op $ -> Unit
+                        Fn *dispatch-op (-> Unit) (:features :io :state)
                         -> Unit
                       d! $ :: :router/change $ {} (:name :home)
                       , &unit
@@ -1179,13 +1181,13 @@
                   {} $ :cursor |pointer
                   , :on-click $ fn (e d!)
                     hint-fn $ Fn respo.schema/RespoEvent
-                      Fn *dispatch-op $ -> Unit
+                      Fn *dispatch-op (-> Unit) (:features :io :state)
                       -> Unit
                     d! $ :: :router/change $ {} (:name :profile)
                     , &unit
                 <> $ if logged-in? |Me |Guest
           :examples $ []
-          :schema $ quote $ Fn Bool (Option Number) (-> respo.schema/Component)
+          :schema $ quote $ Fn Bool (Option Number) (-> respo.schema/Component) (:features :io :state)
         'navigation-count-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn navigation-count-text (members-count)
             match members-count
@@ -1298,7 +1300,7 @@
                 ParagraphDropProps :style style-paragraph-drop :on-drop
                   fn (e d!)
                     hint-fn $ Fn respo.schema/RespoEvent
-                      Fn *dispatch-op $ -> Unit
+                      Fn *dispatch-op (-> Unit) (:features :io :state)
                       -> Unit
                     let
                         event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
@@ -1312,7 +1314,7 @@
                   , :on-dragover
                     fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn *dispatch-op $ -> Unit
+                        Fn *dispatch-op (-> Unit) (:features :io :state)
                         -> Unit
                       let
                           event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
@@ -1320,7 +1322,7 @@
                       , &unit
                     , :on-dragenter $ fn (e d!)
                       hint-fn $ Fn respo.schema/RespoEvent
-                        Fn *dispatch-op $ -> Unit
+                        Fn *dispatch-op (-> Unit) (:features :io :state)
                         -> Unit
                       let
                           event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
@@ -1343,7 +1345,7 @@
                 div
                   ToolbarDragProps :style style-paragraph-toolbar :draggable true :on-dragstart $ fn (e d!)
                     hint-fn $ Fn respo.schema/RespoEvent
-                      Fn *dispatch-op $ -> Unit
+                      Fn *dispatch-op (-> Unit) (:features :io :state)
                       -> Unit
                     let
                         event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
@@ -1376,7 +1378,7 @@
                           delay-focus! 400 |.editor-area
                       comp-i :file-plus 14 $ hsl 200 70 80
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic Bool (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic Bool (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-previewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-previewer (states article focuses members sort-id)
             let
@@ -1442,7 +1444,7 @@
             Map Number $ Option String
             Option String
             -> respo.schema/Component
-            :features :js-ffi
+            :features :io :js-ffi :state
         'comp-text-viewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-text-viewer (article)
             let
@@ -3226,9 +3228,9 @@
               , &unit
           :examples $ []
           :schema $ quote $ Fn
-            Fn *dispatch-op $ -> Unit
+            Fn *dispatch-op (-> Unit) (:features :io :state)
             -> $ Fn AnyEnum $ -> Unit
-            :features :io
+            :features :io :state
             :open :decode
           :tests $ [] $ %{} 'TestEntry (:name |converts-legacy-alert-state-to-nominal-op)
             :code $ quote $ let
