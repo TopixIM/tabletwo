@@ -908,7 +908,7 @@
                   , :on-click $ on-close states sort-id
                 comp-i :chevron-down 14 $ hsl 200 80 70
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
+          :schema $ quote $ Fn Dynamic String (-> respo.schema/Component) (:features :io :js-ffi :state)
         'dispatch-editor-close! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch-editor-close! (cursor paragraph-key dispatch!)
             dispatch! $ :: :paragraph/finish-editing paragraph-key
@@ -926,14 +926,14 @@
                 cursor $ decode-map-as
                   .unwrap $ get states-map :cursor
                   List respo.schema/CoordKey
-                paragraph-key $ decode-map-as sort-id 'String
+                paragraph-key sort-id
               fn (event dispatch!)
                 hint-fn $ Fn respo.schema/RespoEvent
                   Fn *dispatch-op (-> Unit) (:features :io :state)
                   -> Unit
                 dispatch-editor-close! cursor paragraph-key dispatch!
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic (-> respo.schema/EventHandler) (:features :io :state)
+          :schema $ quote $ Fn Dynamic String (-> respo.schema/EventHandler) (:features :io :state)
           :tests $ []
             %{} 'TestEntry (:name |dispatches-finish-before-clear-on-mixed-cursor)
               :code $ quote $ let
