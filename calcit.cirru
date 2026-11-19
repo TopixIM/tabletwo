@@ -2577,7 +2577,8 @@
                   paragraph/move db (paragraph/read-move-keys op-data) sid
                 (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
                 (:paragraph/finish-editing _) (paragraph/finish-editing db sid)
-                (:article/create op-data) (article/create db op-data sid op-id op-time)
+                (:article/create op-data)
+                  article/create db (decode-map-as op-data 'String) sid op-id op-time
                 (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
                 (:article/title op-data)
                   let
@@ -2771,6 +2772,20 @@
                   get-in db $ [] :articles |a :paragraphs base-key
                   , nil
               :tags $ #{} :business :unit
+            %{} 'TestEntry (:name |article-create-requires-text)
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {}
+                    :articles $ {}
+                  updated $ updater db (:: :article/create "|标题🌱") 7 |a-1 1
+                assert= (Result :ok "|标题🌱")
+                  get-in updated $ [] :articles |a-1 :title
+                assert= true $ try
+                  do
+                    updater db (:: :article/create 9) 7 |a-2 2
+                    , false
+                  fn (message) true
+              :tags $ #{} :business :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article) (app.schema :as schema)
@@ -2788,7 +2803,8 @@
             assoc-in db ([] :articles op-id)
               merge schema/article $ {} (:id op-id) (:title op-data)
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             update db :articles $ fn (articles) (dissoc articles op-data)
