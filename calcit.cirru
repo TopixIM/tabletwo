@@ -2813,7 +2813,8 @@
               [] :articles (:id edit) :title
               :title edit
           :examples $ []
-          :schema $ quote $ Fn Dynamic schema/ArticleTitle Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) schema/ArticleTitle Number String Number
+            -> $ Map Tag Dynamic
         'create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create (db op-data sid op-id op-time)
             assoc-in db ([] :articles op-id)
@@ -3167,12 +3168,14 @@
                           , op-id $ {} (:id op-id)
                             :text $ str "|No user named: " username
           :examples $ []
-          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) LoginCredentials Number String Number
+            -> $ Map Tag Dynamic
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db session-id)
             assoc-in db ([] :sessions session-id :user-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'read-login-credentials $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-credentials (value)
             let
@@ -3241,7 +3244,8 @@
                       :password $ md5 password
                       :avatar nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) LoginCredentials Number String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
           :require
