@@ -2572,14 +2572,17 @@
                       text $ decode-map-as (app.decode/required-field fields :text) 'String
                       edit $ schema/ParagraphContent :id id :time time :text text
                     paragraph/update-content db edit sid op-id op-time
-                (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
+                (:paragraph/remove op-data)
+                  paragraph/remove-one db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/move op-data)
                   paragraph/move db (paragraph/read-move-keys op-data) sid
-                (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
+                (:paragraph/edit op-data)
+                  paragraph/edit db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/finish-editing _) (paragraph/finish-editing db sid)
                 (:article/create op-data)
                   article/create db (decode-map-as op-data 'String) sid op-id op-time
-                (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
+                (:article/remove-one op-data)
+                  article/remove-one db (decode-map-as op-data 'String) sid op-id op-time
                 (:article/title op-data)
                   let
                       fields $ decode-map-as op-data $ Map Tag Dynamic
@@ -2786,6 +2789,19 @@
                     , false
                   fn (message) true
               :tags $ #{} :business :unit
+            %{} 'TestEntry (:name |rejects-non-string-record-ids)
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {}
+                    :articles $ {}
+                  rejected? $ fn (op)
+                    try
+                      do (updater db op 7 |operation 1) false
+                      fn (message) true
+                assert= true $ rejected? $ :: :article/remove-one 9
+                assert= true $ rejected? $ :: :paragraph/remove 9
+                assert= true $ rejected? $ :: :paragraph/edit 9
+              :tags $ #{} :business :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article) (app.schema :as schema)
@@ -2809,7 +2825,8 @@
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             update db :articles $ fn (articles) (dissoc articles op-data)
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.article
           :require $ app.schema :as schema
@@ -2852,7 +2869,8 @@
                 assoc-in ([] :articles article-id :paragraphs paragraph-id :time) op-time
                 assoc-in ([] :sessions sid :paragraph-id) paragraph-id
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
         'finish-editing $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn finish-editing (db sid)
             -> db $ assoc-in ([] :sessions sid :paragraph-id) nil
@@ -2942,7 +2960,8 @@
                       , op-data
                 assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |removes-only-selected-paragraph-and-clears-numeric-session-cursor
