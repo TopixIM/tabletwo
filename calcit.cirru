@@ -2005,7 +2005,7 @@
               :data $ {}
               :router nil
           :examples $ []
-          :schema $ quote Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
             {} (:user-id nil) (:id nil) (:nickname nil)
@@ -3068,7 +3068,22 @@
           :code $ quote $ defn change (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :router) op-data
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Dynamic Number String Number
+            -> $ Map Tag Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |preserves-open-route-data)
+            :code $ quote $ let
+                db $ {} $ :sessions
+                  {} $ 7 $ {}
+                    :router $ {} $ :name :home
+                route $ {} (:name :article) (:title "|旧标题🐈")
+                  :data $ {} (:id |a-1) (:count 2)
+                  :router nil
+                next-db $ change db route 7 |op 1
+              assert= (Result :ok route)
+                get-in next-db $ [] :sessions 7 :router
+              assert= (Result :ok :home)
+                get-in db $ [] :sessions 7 :router :name
+            :tags $ #{} :legacy :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.router
     'app.updater.session $ %{} 'FileEntry
