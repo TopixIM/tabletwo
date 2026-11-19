@@ -2472,9 +2472,10 @@
                     decode-map-as (required-field x :id) 'String
               , result
           :examples $ []
-          :schema $ quote $ Fn Tag Sessions Users
+          :schema $ quote $ Fn Tag
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map String $ List (Map Tag Dynamic)
-            :generics Sessions Users
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (article-id sessions users)
             let
@@ -2494,8 +2495,26 @@
                       session-map $ decode-map-as session $ Map Tag Dynamic
                     MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn (Option Dynamic) Dynamic Dynamic
+          :schema $ quote $ Fn (Option Dynamic)
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map Number $ JsNullish String
+          :tests $ [] $ %{} 'TestEntry (:name |member-and-profile-keep-session-keys)
+            :code $ quote $ let
+                sessions $ {}
+                  7 $ {} (:user-id |u-1) (:article-id |a-1)
+                    :router $ {} $ :name :article
+                  8 $ {} (:user-id |u-2) (:article-id |a-2)
+                    :router $ {} $ :name :article
+                users $ {}
+                  |u-1 $ {} $ :name "|Ada🐈"
+                  |u-2 $ {} $ :name |Bob
+                members $ twig-members (Some |a-1) sessions users
+                profiles $ twig-profile sessions users
+              assert= (Some "|Ada🐈") (get members 7)
+              assert= true $ .none? $ get members 8
+              assert= (Some |Bob) (get profiles 8)
+            :tags $ #{} :business :unit
         'twig-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-profile (sessions users)
             let
@@ -2512,7 +2531,9 @@
                     session-map $ decode-map-as session $ Map Tag Dynamic
                   MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic
+          :schema $ quote $ Fn
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map Number $ JsNullish String
         'user-name-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder for member/profile maps: the client renders a nil name as an empty span."
