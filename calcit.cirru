@@ -2005,7 +2005,7 @@
               :data $ {}
               :router nil
           :examples $ []
-          :schema $ quote Dynamic
+          :schema $ quote $ Map Tag Dynamic
         'session $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def session
             {} (:user-id nil) (:id nil) (:nickname nil)
@@ -2472,9 +2472,10 @@
                     decode-map-as (required-field x :id) 'String
               , result
           :examples $ []
-          :schema $ quote $ Fn Tag Sessions Users
+          :schema $ quote $ Fn Tag
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map String $ List (Map Tag Dynamic)
-            :generics Sessions Users
         'twig-members $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-members (article-id sessions users)
             let
@@ -2494,8 +2495,26 @@
                       session-map $ decode-map-as session $ Map Tag Dynamic
                     MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn (Option Dynamic) Dynamic Dynamic
+          :schema $ quote $ Fn (Option Dynamic)
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map Number $ JsNullish String
+          :tests $ [] $ %{} 'TestEntry (:name |member-and-profile-keep-session-keys)
+            :code $ quote $ let
+                sessions $ {}
+                  7 $ {} (:user-id |u-1) (:article-id |a-1)
+                    :router $ {} $ :name :article
+                  8 $ {} (:user-id |u-2) (:article-id |a-2)
+                    :router $ {} $ :name :article
+                users $ {}
+                  |u-1 $ {} $ :name "|Ada🐈"
+                  |u-2 $ {} $ :name |Bob
+                members $ twig-members (Some |a-1) sessions users
+                profiles $ twig-profile sessions users
+              assert= (Some "|Ada🐈") (get members 7)
+              assert= true $ .none? $ get members 8
+              assert= (Some |Bob) (get profiles 8)
+            :tags $ #{} :business :unit
         'twig-profile $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn twig-profile (sessions users)
             let
@@ -2512,7 +2531,9 @@
                     session-map $ decode-map-as session $ Map Tag Dynamic
                   MapEntryDecision :keep k $ user-name-to-wire $ read-session-user-name users-map session-map
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic
+          :schema $ quote $ Fn
+            Map Number $ Map Tag Dynamic
+            Map String $ Map Tag Dynamic
             -> $ Map Number $ JsNullish String
         'user-name-to-wire $ %{} 'CodeEntry
           :doc "|Wire encoder for member/profile maps: the client renders a nil name as an empty span."
@@ -2572,13 +2593,17 @@
                       text $ decode-map-as (app.decode/required-field fields :text) 'String
                       edit $ schema/ParagraphContent :id id :time time :text text
                     paragraph/update-content db edit sid op-id op-time
-                (:paragraph/remove op-data) (paragraph/remove-one db op-data sid op-id op-time)
+                (:paragraph/remove op-data)
+                  paragraph/remove-one db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/move op-data)
                   paragraph/move db (paragraph/read-move-keys op-data) sid
-                (:paragraph/edit op-data) (paragraph/edit db op-data sid op-id op-time)
+                (:paragraph/edit op-data)
+                  paragraph/edit db (decode-map-as op-data 'String) sid op-id op-time
                 (:paragraph/finish-editing _) (paragraph/finish-editing db sid)
-                (:article/create op-data) (article/create db op-data sid op-id op-time)
-                (:article/remove-one op-data) (article/remove-one db op-data sid op-id op-time)
+                (:article/create op-data)
+                  article/create db (decode-map-as op-data 'String) sid op-id op-time
+                (:article/remove-one op-data)
+                  article/remove-one db (decode-map-as op-data 'String) sid op-id op-time
                 (:article/title op-data)
                   let
                       fields $ decode-map-as op-data $ Map Tag Dynamic
@@ -2771,6 +2796,33 @@
                   get-in db $ [] :articles |a :paragraphs base-key
                   , nil
               :tags $ #{} :business :unit
+            %{} 'TestEntry (:name |article-create-requires-text)
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {}
+                    :articles $ {}
+                  updated $ updater db (:: :article/create "|标题🌱") 7 |a-1 1
+                assert= (Result :ok "|标题🌱")
+                  get-in updated $ [] :articles |a-1 :title
+                assert= true $ try
+                  do
+                    updater db (:: :article/create 9) 7 |a-2 2
+                    , false
+                  fn (message) true
+              :tags $ #{} :business :unit
+            %{} 'TestEntry (:name |rejects-non-string-record-ids)
+              :code $ quote $ let
+                  db $ {}
+                    :sessions $ {}
+                    :articles $ {}
+                  rejected? $ fn (op)
+                    try
+                      do (updater db op 7 |operation 1) false
+                      fn (message) true
+                assert= true $ rejected? $ :: :article/remove-one 9
+                assert= true $ rejected? $ :: :paragraph/remove 9
+                assert= true $ rejected? $ :: :paragraph/edit 9
+              :tags $ #{} :business :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.paragraph :as paragraph) (app.updater.article :as article) (app.schema :as schema)
@@ -2782,18 +2834,21 @@
               [] :articles (:id edit) :title
               :title edit
           :examples $ []
-          :schema $ quote $ Fn Dynamic schema/ArticleTitle Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) schema/ArticleTitle Number String Number
+            -> $ Map Tag Dynamic
         'create $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn create (db op-data sid op-id op-time)
             assoc-in db ([] :articles op-id)
               merge schema/article $ {} (:id op-id) (:title op-data)
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
         'remove-one $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn remove-one (db op-data sid op-id op-time)
             update db :articles $ fn (articles) (dissoc articles op-data)
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.article
           :require $ app.schema :as schema
@@ -2836,7 +2891,8 @@
                 assoc-in ([] :articles article-id :paragraphs paragraph-id :time) op-time
                 assoc-in ([] :sessions sid :paragraph-id) paragraph-id
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
         'finish-editing $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn finish-editing (db sid)
             -> db $ assoc-in ([] :sessions sid :paragraph-id) nil
@@ -2926,7 +2982,8 @@
                       , op-data
                 assoc-in ([] :sessions sid :paragraph-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) String Number String Number
+            -> $ Map Tag Dynamic
           :tests $ []
             %{} 'TestEntry
               :name |removes-only-selected-paragraph-and-clears-numeric-session-cursor
@@ -3032,7 +3089,22 @@
           :code $ quote $ defn change (db op-data session-id op-id op-time)
             assoc-in db ([] :sessions session-id :router) op-data
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Dynamic Number String Number
+            -> $ Map Tag Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |preserves-open-route-data)
+            :code $ quote $ let
+                db $ {} $ :sessions
+                  {} $ 7 $ {}
+                    :router $ {} $ :name :home
+                route $ {} (:name :article) (:title "|旧标题🐈")
+                  :data $ {} (:id |a-1) (:count 2)
+                  :router nil
+                next-db $ change db route 7 |op 1
+              assert= (Result :ok route)
+                get-in next-db $ [] :sessions 7 :router
+              assert= (Result :ok :home)
+                get-in db $ [] :sessions 7 :router :name
+            :tags $ #{} :legacy :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.router
     'app.updater.session $ %{} 'FileEntry
@@ -3132,12 +3204,14 @@
                           , op-id $ {} (:id op-id)
                             :text $ str "|No user named: " username
           :examples $ []
-          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) LoginCredentials Number String Number
+            -> $ Map Tag Dynamic
         'log-out $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn log-out (db session-id)
             assoc-in db ([] :sessions session-id :user-id) nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) Number
+            -> $ Map Tag Dynamic
         'read-login-credentials $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-login-credentials (value)
             let
@@ -3206,7 +3280,8 @@
                       :password $ md5 password
                       :avatar nil
           :examples $ []
-          :schema $ quote $ Fn Dynamic LoginCredentials Number String Number (-> Dynamic)
+          :schema $ quote $ Fn (Map Tag Dynamic) LoginCredentials Number String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater.user
           :require
