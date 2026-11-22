@@ -15,9 +15,9 @@
 CLI 与 `@calcit/procs` 配对使用 Calcit 0.44.0。升级后请重新安装依赖、构建并刷新页面。
 客户端使用 RespoEvent 读取输入，状态游标使用 CoordKey union，文章、段落和登录操作保留各自载荷类型。
 客户端每次渲染仍将开放 store 解码为 StoreView，twig 和 updater 在读取处校验字段。
-前后端沿用原 Cirru EDN 消息和存储格式。无载荷操作在发送时仍编码为 `:data nil`，Number session key 保持原合同。
+客户端连接使用按事件区分的类型化回调；前后端沿用原 Cirru EDN 消息和存储格式。无载荷操作在发送时仍编码为 `:data nil`，Number session key 保持原合同。
 
-正式依赖图同时对齐 Cumulo Reel 0.3.8、WS-EDN 0.2.6 与 Recollect 0.3.10；前后端需配套更新。
+正式依赖图同时对齐 Cumulo Reel 0.3.9、WS-EDN 0.2.7、Alerts 0.14.9 与 Recollect 0.3.10；前后端需配套更新。
 
 正式依赖包括 Bisection Key 0.0.49、标准库 0.2.58 和 WSS 0.2.46，均配对 Calcit 0.44.0。服务端须重新安装并为目标架构构建 native 库。当前迁移依赖图见 `deps.cirru`。前端资源和服务端脚本使用各自的原部署入口。
 

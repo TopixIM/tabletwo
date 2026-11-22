@@ -29,19 +29,17 @@
           :code $ quote $ defn connect! ()
             let
                 location $ location-snapshot
-                url-obj $ unsafe-coerce
-                  url-parse (location :href) true
-                  , 'app.ffi.url/ParsedUrlHost
-                query $ unsafe-coerce (js-get url-obj :query) 'app.ffi.url/QueryHost
-                raw-host $ js-get query :host
-                raw-port $ js-get query :port
+                url-obj $ url-parse (location :href) true
+                query $ contract/object-field "|connection URL" url-obj |query
+                raw-host $ contract/object-field "|connection query" query |host
+                raw-port $ contract/object-field "|connection query" query |port
                 host $ if (js-present? raw-host) raw-host $ location :hostname
                 port $ if (js-present? raw-port) raw-port $ :port config/site
-              ws-connect! (str |ws:// host |: port)
-                {}
-                  :on-open $ fn (event) (simulate-login!)
-                  :on-close $ fn (event) (reset! *store None) (js/console.error |Disconnected)
-                  :on-data on-server-data
+                opened $ fn (event) (simulate-login!) &unit
+                closed $ fn (event) (reset! *store None) (js/console.error |Disconnected) &unit
+              ws-edn.client/ws-connect-typed! (str |ws:// host |: port)
+                ws-edn.client/ClientConfig :retry-base-ms None :retry-max-ms None :retry-jitter None :heartbeat-timeout-ms None :class-mapper $ {}
+                ws-edn.client/ClientCallbacks :on-open (Some opened) :on-close (Some closed) :on-error None :on-data $ Some on-server-data
           :examples $ []
           :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :io :js-ffi :state)
         'dispatch! $ %{} 'CodeEntry (:doc |)
@@ -235,8 +233,8 @@
             |bottom-tip :default hud!
             js-ffi.browser :refer $ location-snapshot
             app.ffi.highlight :refer $ HighlightHost
-            app.ffi.url :refer $ ParsedUrlHost QueryHost
             respo.ffi.browser :refer $ query-selector
+            js-ffi.contract :as contract
     'app.comp.articles $ %{} 'FileEntry
       :defs $ {}
         'comp-article $ %{} 'CodeEntry (:doc |)
