@@ -37,11 +37,11 @@
                 raw-port $ js-get query :port
                 host $ if (js-present? raw-host) raw-host $ location :hostname
                 port $ if (js-present? raw-port) raw-port $ :port config/site
-              ws-connect! (str |ws:// host |: port)
-                {}
-                  :on-open $ fn (event) (simulate-login!)
-                  :on-close $ fn (event) (reset! *store None) (js/console.error |Disconnected)
-                  :on-data on-server-data
+                opened $ fn (event) (simulate-login!) &unit
+                closed $ fn (event) (reset! *store None) (js/console.error |Disconnected) &unit
+              ws-edn.client/ws-connect-typed! (str |ws:// host |: port)
+                ws-edn.client/ClientConfig :retry-base-ms None :retry-max-ms None :retry-jitter None :heartbeat-timeout-ms None :class-mapper $ {}
+                ws-edn.client/ClientCallbacks :on-open (Some opened) :on-close (Some closed) :on-error None :on-data $ Some on-server-data
           :examples $ []
           :schema $ quote $ Fn (-> ws-edn.client/WsClient) (:features :io :js-ffi :state)
         'dispatch! $ %{} 'CodeEntry (:doc |)
