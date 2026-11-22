@@ -29,12 +29,10 @@
           :code $ quote $ defn connect! ()
             let
                 location $ location-snapshot
-                url-obj $ unsafe-coerce
-                  url-parse (location :href) true
-                  , 'app.ffi.url/ParsedUrlHost
-                query $ unsafe-coerce (js-get url-obj :query) 'app.ffi.url/QueryHost
-                raw-host $ js-get query :host
-                raw-port $ js-get query :port
+                url-obj $ url-parse (location :href) true
+                query $ contract/object-field "|connection URL" url-obj |query
+                raw-host $ contract/object-field "|connection query" query |host
+                raw-port $ contract/object-field "|connection query" query |port
                 host $ if (js-present? raw-host) raw-host $ location :hostname
                 port $ if (js-present? raw-port) raw-port $ :port config/site
                 opened $ fn (event) (simulate-login!) &unit
@@ -235,8 +233,8 @@
             |bottom-tip :default hud!
             js-ffi.browser :refer $ location-snapshot
             app.ffi.highlight :refer $ HighlightHost
-            app.ffi.url :refer $ ParsedUrlHost QueryHost
             respo.ffi.browser :refer $ query-selector
+            js-ffi.contract :as contract
     'app.comp.articles $ %{} 'FileEntry
       :defs $ {}
         'comp-article $ %{} 'CodeEntry (:doc |)
