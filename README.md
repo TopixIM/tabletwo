@@ -17,7 +17,7 @@ CLI 与 `@calcit/procs` 配对使用 Calcit 0.44.0。升级后请重新安装依
 客户端每次渲染仍将开放 store 解码为 StoreView，twig 和 updater 在读取处校验字段。
 客户端连接使用按事件区分的类型化回调；前后端沿用原 Cirru EDN 消息和存储格式。无载荷操作在发送时仍编码为 `:data nil`，Number session key 保持原合同。
 
-正式依赖图同时对齐 Cumulo Reel 0.3.9、WS-EDN 0.2.7、Alerts 0.14.9 与 Recollect 0.3.10；前后端需配套更新。
+正式依赖图同时对齐 Cumulo Reel 0.3.10、WS-EDN 0.2.10、Alerts 0.14.10、Recollect 0.3.11 与 JS-FFI 0.2.22；前后端需配套更新。拖拽事件在浏览器宿主边界受检，原有数据传输行为保持。
 
 正式依赖包括 Bisection Key 0.0.49、标准库 0.2.58 和 WSS 0.2.46，均配对 Calcit 0.44.0。服务端须重新安装并为目标架构构建 native 库。当前迁移依赖图见 `deps.cirru`。前端资源和服务端脚本使用各自的原部署入口。
 
@@ -108,8 +108,8 @@ calcit calcit.cirru --entry server
 
 ## 限制
 
-- 正式 0.30.1 tag 已发布，但 CLI assets 和 npm runtime 尚未齐备，当前固定配对 alpha.5；服务端也必须安装匹配 CLI 与模块，
-  不能只升级网页后继续运行旧服务。服务器准备情况未确认，本 PR 不触发生产合并部署。
+- 服务端也必须安装匹配的 Calcit 0.44.0 CLI 与模块，不能只升级网页后继续运行旧服务。
+  生产服务器的准备情况需要在部署前确认。
 - Text 导出的排序、标题和 Unicode 原断言通过，但本地浏览器点击后未暴露可读取的弹窗，
   完整弹窗内容与 HTML 转义的浏览器验收仍未完成，不计作通过。
 - 框架 state、投影和宿主的开放边界仍存在，不宣称全应用已静态化。
