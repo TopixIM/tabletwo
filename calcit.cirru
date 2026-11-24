@@ -317,7 +317,7 @@
                 .render edit-plugin
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
+          :schema $ quote $ Fn Dynamic (Map Tag Dynamic) Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-articles (states router-data)
             let
@@ -1289,7 +1289,10 @@
                             span $ {}
                           (:some focus-name) (<> focus-name)
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> respo.schema/Component) (:features :js-ffi)
+          :schema $ quote $ Fn
+            List $ Map Tag Dynamic
+            -> respo.schema/Component
+            :features :js-ffi
         'comp-paragraph $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-paragraph (states sort-id paragraph focus-list focused?)
             let
@@ -1379,7 +1382,9 @@
                           delay-focus! 400 |.editor-area
                       comp-i :file-plus 14 $ hsl 200 70 80
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic Bool (-> respo.schema/Component) (:features :io :js-ffi :state)
+          :schema $ quote $ Fn Dynamic String (Map Tag Dynamic)
+            List $ Map Tag Dynamic
+            , Bool (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-previewer $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-previewer (states article focuses members sort-id)
             let
