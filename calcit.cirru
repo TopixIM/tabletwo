@@ -896,8 +896,9 @@
                   Fn *dispatch-op (-> Unit) (:features :io :state)
                   -> Unit
                 let
-                    event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                    data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                    event $ js-ffi.browser/drag-event-host $ :event e
+                    data-transfer $ js-ffi.browser/data-transfer-host $ .unwrap
+                      js-nullish->option $ js-get event :data-transfer
                   .set-data! data-transfer |text $ str sort-id
                 , &unit
               span
@@ -977,7 +978,7 @@
             respo-md.comp.md :refer $ comp-md-block
             app.style :as style
             feather.core :refer $ comp-i
-            app.ffi.drag :refer $ DragEventHost
+            js-ffi.browser :as browser
     'app.comp.login $ %{} 'FileEntry
       :defs $ {}
         'LoginFields $ %{} 'CodeEntry (:doc |)
@@ -1301,8 +1302,9 @@
                       Fn *dispatch-op (-> Unit) (:features :io :state)
                       -> Unit
                     let
-                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                        event $ js-ffi.browser/drag-event-host $ :event e
+                        data-transfer $ js-ffi.browser/data-transfer-host $ .unwrap
+                          js-nullish->option $ js-get event :data-transfer
                         data $ data-transfer .get-data |text
                       event .stop-propagation!
                       if (not= sort-id data)
@@ -1315,7 +1317,7 @@
                         Fn *dispatch-op (-> Unit) (:features :io :state)
                         -> Unit
                       let
-                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                          event $ js-ffi.browser/drag-event-host $ :event e
                         event .prevent-default!
                       , &unit
                     , :on-dragenter $ fn (e d!)
@@ -1323,7 +1325,7 @@
                         Fn *dispatch-op (-> Unit) (:features :io :state)
                         -> Unit
                       let
-                          event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
+                          event $ js-ffi.browser/drag-event-host $ :event e
                         event .prevent-default!
                       , &unit
                 comp-md-block paragraph-text $ {} (:class-name |preview-content)
@@ -1346,8 +1348,9 @@
                       Fn *dispatch-op (-> Unit) (:features :io :state)
                       -> Unit
                     let
-                        event $ unsafe-coerce (:event e) 'app.ffi.drag/DragEventHost
-                        data-transfer $ .unwrap $ js-nullish->option (js-get event :data-transfer)
+                        event $ js-ffi.browser/drag-event-host $ :event e
+                        data-transfer $ js-ffi.browser/data-transfer-host $ .unwrap
+                          js-nullish->option $ js-get event :data-transfer
                       data-transfer .set-data! |text $ str sort-id
                     , &unit
                   comp-info-list focus-list
@@ -1552,7 +1555,6 @@
             clojure.string :as string
             app.util :refer $ delay-focus!
             feather.core :refer $ comp-i
-            app.ffi.drag :refer $ DragEventHost
             app.ffi.highlight :refer $ HighlightHost HighlightResultHost
             app.ffi.popup :refer $ DocumentWriterHost
             js-ffi.browser :refer $ window-open
@@ -1828,26 +1830,6 @@
       :ns $ %{} 'NsEntry
         :doc "|Field readers for untyped EDN maps crossing the client/server boundary."
         :code $ quote $ ns app.decode
-    'app.ffi.drag $ %{} 'FileEntry
-      :defs $ {}
-        'DataTransferHost $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ deftrait DataTransferHost
-            .get-data $ Fn app.ffi.drag/DataTransferHost String $ -> String
-            .set-data! $ Fn app.ffi.drag/DataTransferHost String String $ -> Unit
-          :examples $ []
-          :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-            :names $ {} (:get-data |getData) (:set-data! |setData)
-          :schema $ quote Trait
-        'DragEventHost $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ deftrait DragEventHost (:data-transfer 'app.ffi.drag/DataTransferHost)
-            .stop-propagation! $ Fn app.ffi.drag/DragEventHost $ -> Unit
-            .prevent-default! $ Fn app.ffi.drag/DragEventHost $ -> Unit
-          :examples $ []
-          :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-            :names $ {} (:data-transfer |dataTransfer) (:prevent-default! |preventDefault) (:stop-propagation! |stopPropagation)
-          :schema $ quote Trait
-      :ns $ %{} 'NsEntry (:doc |)
-        :code $ quote $ ns app.ffi.drag
     'app.ffi.highlight $ %{} 'FileEntry
       :defs $ {}
         'HighlightHost $ %{} 'CodeEntry (:doc |)
