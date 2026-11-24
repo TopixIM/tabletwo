@@ -317,7 +317,7 @@
                 .render edit-plugin
                 .render remove-plugin
           :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
+          :schema $ quote $ Fn Dynamic (Map Tag Dynamic) Dynamic (-> respo.schema/Component) (:features :io :js-ffi :state)
         'comp-articles $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-articles (states router-data)
             let
