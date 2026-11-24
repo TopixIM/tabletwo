@@ -122,7 +122,7 @@
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             let
-                highlighter $ unsafe-coerce hljs 'app.ffi.highlight/HighlightHost
+                highlighter $ js-cast hljs 'app.ffi.highlight/HighlightHost
               if config/dev? $ load-console-formatter!
               highlighter .register-language! |clojure clojure-lang
               highlighter .register-language! |bash bash-lang
@@ -1338,7 +1338,7 @@
                     decode-map-as
                       if (contains? supprted-langs lang)
                         let
-                            highlighter $ unsafe-coerce hljs 'app.ffi.highlight/HighlightHost
+                            highlighter $ js-cast hljs 'app.ffi.highlight/HighlightHost
                             result $ highlighter .highlight
                               .unwrap-or (get supprted-langs lang) |
                               , code
